@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body { font-family: sans-serif; margin: 0; padding: 16px; }
+  #reader { width: 100%; max-width: 500px; }
+  #log { margin-top: 16px; font-size: 14px; }
+  .row { padding: 8px; border-bottom: 1px solid #eee; }
+  #status { padding: 8px; background: #f0f0f0; margin-bottom: 8px; font-size: 13px; }
+  button { padding: 12px 20px; font-size: 16px; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+<h2>Scanner</h2>
+<div id="status">Tap Start to begin</div>
+<button id="startBtn">Start Camera</button>
+<div id="reader"></div>
+<div id="log"></div>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script>
+  const webAppUrl = "https://script.google.com/macros/s/AKfycbx8CZR-7zsE8Tc5_6qQaM-VqrY7Qtr0Sg7l6_5n6nyUmeKTeGDypiGvhRvizEbFhUNy0Q/exec";
+  const log = document.getElementById('log');
+  const status = document.getElementById('status');
+  let last = '', lastTime = 0;
+
+  function onScan(code) {
+    const now = Date.now();
+    if (code === last && now - lastTime < 2000) return;
+    last = code; lastTime = now;
+    fetch(webAppUrl + '?code=' + encodeURIComponent(code), { mode: 'no-cors' });
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.textContent = new Date().toLocaleTimeString() + ' — ' + code;
+    log.prepend(row);
+  }
+
+  document.getElementById('startBtn').onclick = function() {
+    status.textContent = 'Requesting camera...';
+    const scanner = new Html5Qrcode('reader');
+    scanner.start(
+      { facingMode: 'environment' },
+      { fps: 10, qrbox: 250 },
+      onScan,
+      function() {}
+    ).then(function() {
+      status.textContent = 'Scanning...';
+      document.getElementById('startBtn').style.display = 'none';
+    }).catch(function(err) {
+      status.textContent = 'Error: ' + err;
+    });
+  };
+</script>
+</body>
+</html>
