@@ -6,8 +6,12 @@
   body { font-family: sans-serif; margin: 0; padding: 16px; }
   #reader { width: 100%; max-width: 500px; }
   #log { margin-top: 16px; font-size: 14px; }
-  .row { padding: 8px; border-bottom: 1px solid #eee; }
+  .row { padding: 8px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+  .row.duplicate { background: #fff0f0; color: #c00; }
+  .badge { font-size: 11px; font-weight: bold; padding: 2px 6px; border-radius: 4px; background: #c00; color: #fff; margin-left: 8px; white-space: nowrap; }
   #status { padding: 8px; background: #f0f0f0; margin-bottom: 8px; font-size: 13px; }
+  #status.ok   { background: #e6f9ec; color: #1a7a3a; }
+  #status.dup  { background: #fff0f0; color: #c00; }
   button { padding: 12px 20px; font-size: 16px; margin-bottom: 12px; }
 </style>
 </head>
@@ -19,24 +23,79 @@
 <div id="log"></div>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
-  const webAppUrl = "https://script.google.com/macros/s/AKfycbx8CZR-7zsE8Tc5_6qQaM-VqrY7Qtr0Sg7l6_5n6nyUmeKTeGDypiGvhRvizEbFhUNy0Q/exec";
-  const log = document.getElementById('log');
-  const status = document.getElementById('status');
-  let last = '', lastTime = 0;
+  const webAppUrl = "https://script.google.com/macros/s/AKfycbz3EHgWdg23mxu4vH-aF6EJjwR62ZLj3OjM1I9UYK9X3NOtbY1csEqAAAIEz3WJRX2p5g/exec";
+  const logEl   = document.getElementById('log');
+  const statusEl = document.getElementById('status');
+
+  // Track all codes scanned this session to catch duplicates instantly (no network round-trip needed)
+  const scannedThisSession = new Set();
+
+  let lastCode = '', lastTime = 0;
+
+  function setStatus(msg, type) {
+    statusEl.textContent = msg;
+    statusEl.className = type || '';
+  }
+
+  function addLogRow(time, code, isDuplicate) {
+    const row = document.createElement('div');
+    row.className = 'row' + (isDuplicate ? ' duplicate' : '');
+
+    const text = document.createElement('span');
+    text.textContent = time + ' — ' + code;
+    row.appendChild(text);
+
+    if (isDuplicate) {
+      const badge = document.createElement('span');
+      badge.className = 'badge';
+      badge.textContent = 'DUPLICATE';
+      row.appendChild(badge);
+    }
+
+    logEl.prepend(row);
+  }
 
   function onScan(code) {
     const now = Date.now();
-    if (code === last && now - lastTime < 2000) return;
-    last = code; lastTime = now;
-    fetch(webAppUrl + '?code=' + encodeURIComponent(code), { mode: 'no-cors' });
-    const row = document.createElement('div');
-    row.className = 'row';
-    row.textContent = new Date().toLocaleTimeString() + ' — ' + code;
-    log.prepend(row);
+    // Debounce: ignore the same code scanned within 2 seconds
+    if (code === lastCode && now - lastTime < 2000) return;
+    lastCode = code;
+    lastTime = now;
+
+    const time = new Date().toLocaleTimeString();
+    const isDuplicateLocally = scannedThisSession.has(code);
+
+    if (isDuplicateLocally) {
+      // Already seen in this session — no need to hit the server
+      setStatus('Duplicate: ' + code, 'dup');
+      addLogRow(time, code, true);
+      return;
+    }
+
+    // Optimistically mark as seen and send to server
+    scannedThisSession.add(code);
+    setStatus('Sending…');
+
+    fetch(webAppUrl + '?code=' + encodeURIComponent(code))
+      .then(function(res) { return res.text(); })
+      .then(function(result) {
+        if (result.trim() === 'DUPLICATE') {
+          setStatus('Duplicate (already in sheet): ' + code, 'dup');
+          addLogRow(time, code, true);
+        } else {
+          setStatus('Saved: ' + code, 'ok');
+          addLogRow(time, code, false);
+        }
+      })
+      .catch(function() {
+        // Fallback for no-cors deployments where we can't read the response
+        setStatus('Sent (response unreadable): ' + code, 'ok');
+        addLogRow(time, code, false);
+      });
   }
 
   document.getElementById('startBtn').onclick = function() {
-    status.textContent = 'Requesting camera...';
+    setStatus('Requesting camera…');
     const scanner = new Html5Qrcode('reader');
     scanner.start(
       { facingMode: 'environment' },
@@ -44,10 +103,10 @@
       onScan,
       function() {}
     ).then(function() {
-      status.textContent = 'Scanning...';
+      setStatus('Scanning…');
       document.getElementById('startBtn').style.display = 'none';
     }).catch(function(err) {
-      status.textContent = 'Error: ' + err;
+      setStatus('Error: ' + err);
     });
   };
 </script>
