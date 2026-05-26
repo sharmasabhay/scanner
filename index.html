@@ -3,95 +3,198 @@
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-  body { font-family: sans-serif; margin: 0; padding: 16px; }
-  #reader { width: 100%; max-width: 500px; }
-  #log { margin-top: 16px; font-size: 14px; }
-  .row { padding: 8px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
-  .row.duplicate { background: #fff0f0; color: #c00; }
-  .badge { font-size: 11px; font-weight: bold; padding: 2px 6px; border-radius: 4px; background: #c00; color: #fff; margin-left: 8px; white-space: nowrap; }
-  #status { padding: 8px; background: #f0f0f0; margin-bottom: 8px; font-size: 13px; }
-  #status.ok   { background: #e6f9ec; color: #1a7a3a; }
-  #status.dup  { background: #fff0f0; color: #c00; }
-  button { padding: 12px 20px; font-size: 16px; margin-bottom: 12px; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Courier New', monospace;
+    margin: 0; padding: 16px;
+    background: #0f0f0f; color: #e0e0e0;
+  }
+  h2 { color: #00e5a0; margin: 0 0 12px; font-size: 20px; letter-spacing: 2px; text-transform: uppercase; }
+
+  #status {
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    margin-bottom: 10px;
+    background: #1a1a1a;
+    border-left: 4px solid #555;
+    transition: all 0.3s;
+  }
+  #status.ok   { border-color: #00e5a0; color: #00e5a0; }
+  #status.dup  { border-color: #ff4444; color: #ff4444; }
+  #status.wait { border-color: #f0a500; color: #f0a500; }
+
+  /* Job progress bar */
+  #jobBar {
+    display: flex; gap: 8px; margin-bottom: 12px;
+  }
+  .scan-slot {
+    flex: 1; padding: 10px 8px; border-radius: 6px;
+    background: #1a1a1a; border: 1px solid #333;
+    font-size: 12px; text-align: center; transition: all 0.3s;
+  }
+  .scan-slot .label { color: #666; font-size: 11px; margin-bottom: 4px; }
+  .scan-slot .value { color: #888; font-weight: bold; word-break: break-all; }
+  .scan-slot.active { border-color: #f0a500; background: #1f1800; }
+  .scan-slot.active .label { color: #f0a500; }
+  .scan-slot.done { border-color: #00e5a0; background: #001a12; }
+  .scan-slot.done .value { color: #00e5a0; }
+
+  #reader { width: 100%; max-width: 500px; border-radius: 8px; overflow: hidden; margin-bottom: 12px; }
+
+  button {
+    padding: 12px 20px; font-size: 15px;
+    background: #00e5a0; color: #000;
+    border: none; border-radius: 6px; cursor: pointer;
+    font-family: 'Courier New', monospace; font-weight: bold;
+    letter-spacing: 1px; margin-bottom: 12px;
+  }
+  button:active { background: #00b87a; }
+
+  #log { margin-top: 8px; font-size: 13px; }
+  .log-header { color: #555; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+  .row {
+    padding: 8px 10px; border-radius: 4px;
+    margin-bottom: 4px; background: #151515;
+    border-left: 3px solid #333;
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 8px;
+  }
+  .row.complete { border-color: #00e5a0; }
+  .row.duplicate { border-color: #ff4444; background: #1a0505; color: #ff4444; }
+  .row-codes { font-size: 12px; color: #ccc; }
+  .row-codes span { color: #00e5a0; }
+  .row-time { font-size: 11px; color: #555; white-space: nowrap; }
+  .badge {
+    font-size: 10px; font-weight: bold; padding: 2px 5px;
+    border-radius: 3px; background: #ff4444; color: #fff;
+    white-space: nowrap; align-self: center;
+  }
 </style>
 </head>
 <body>
-<h2>Scanner</h2>
+<h2>&#9634; QR Scanner</h2>
 <div id="status">Tap Start to begin</div>
+
+<div id="jobBar">
+  <div class="scan-slot active" id="slot1">
+    <div class="label">SCAN 1</div>
+    <div class="value" id="slot1val">—</div>
+  </div>
+  <div class="scan-slot" id="slot2">
+    <div class="label">SCAN 2</div>
+    <div class="value" id="slot2val">—</div>
+  </div>
+</div>
+
 <button id="startBtn">Start Camera</button>
 <div id="reader"></div>
-<div id="log"></div>
+<div id="log">
+  <div class="log-header">Completed Jobs</div>
+</div>
+
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
-  const webAppUrl = "https://script.google.com/macros/s/AKfycbz3EHgWdg23mxu4vH-aF6EJjwR62ZLj3OjM1I9UYK9X3NOtbY1csEqAAAIEz3WJRX2p5g/exec";
-  const logEl   = document.getElementById('log');
+  const webAppUrl = "PASTE_YOUR_EXEC_URL_HERE";
+
   const statusEl = document.getElementById('status');
+  const logEl    = document.getElementById('log');
+  const slot1    = document.getElementById('slot1');
+  const slot2    = document.getElementById('slot2');
+  const slot1val = document.getElementById('slot1val');
+  const slot2val = document.getElementById('slot2val');
 
-  // Track all codes scanned this session to catch duplicates instantly (no network round-trip needed)
-  const scannedThisSession = new Set();
-
-  let lastCode = '', lastTime = 0;
+  let firstScan  = null;   // holds the first QR code of current job
+  let lastCode   = '';     // for consecutive-duplicate check
+  let lastTime   = 0;
 
   function setStatus(msg, type) {
     statusEl.textContent = msg;
     statusEl.className = type || '';
   }
 
-  function addLogRow(time, code, isDuplicate) {
-    const row = document.createElement('div');
-    row.className = 'row' + (isDuplicate ? ' duplicate' : '');
-
-    const text = document.createElement('span');
-    text.textContent = time + ' — ' + code;
-    row.appendChild(text);
-
-    if (isDuplicate) {
-      const badge = document.createElement('span');
-      badge.className = 'badge';
-      badge.textContent = 'DUPLICATE';
-      row.appendChild(badge);
-    }
-
-    logEl.prepend(row);
+  function resetSlots() {
+    firstScan = null;
+    slot1.className = 'scan-slot active';
+    slot2.className = 'scan-slot';
+    slot1val.textContent = '—';
+    slot2val.textContent = '—';
   }
 
   function onScan(code) {
     const now = Date.now();
-    // Debounce: ignore the same code scanned within 2 seconds
+
+    // --- Consecutive duplicate check ---
     if (code === lastCode && now - lastTime < 2000) return;
-    lastCode = code;
-    lastTime = now;
 
-    const time = new Date().toLocaleTimeString();
-    const isDuplicateLocally = scannedThisSession.has(code);
-
-    if (isDuplicateLocally) {
-      // Already seen in this session — no need to hit the server
-      setStatus('Duplicate: ' + code, 'dup');
-      addLogRow(time, code, true);
+    // If this code is the same as the immediately previous scan in this job, reject it
+    if (code === lastCode) {
+      setStatus('Duplicate scan ignored: ' + code, 'dup');
+      logDuplicate(code);
+      lastTime = now; // reset timer
       return;
     }
 
-    // Optimistically mark as seen and send to server
-    scannedThisSession.add(code);
-    setStatus('Sending…');
+    lastCode = code;
+    lastTime = now;
 
-    fetch(webAppUrl + '?code=' + encodeURIComponent(code))
-      .then(function(res) { return res.text(); })
-      .then(function(result) {
-        if (result.trim() === 'DUPLICATE') {
-          setStatus('Duplicate (already in sheet): ' + code, 'dup');
-          addLogRow(time, code, true);
-        } else {
-          setStatus('Saved: ' + code, 'ok');
-          addLogRow(time, code, false);
-        }
-      })
-      .catch(function() {
-        // Fallback for no-cors deployments where we can't read the response
-        setStatus('Sent (response unreadable): ' + code, 'ok');
-        addLogRow(time, code, false);
-      });
+    if (firstScan === null) {
+      // ---- First scan of a job ----
+      firstScan = code;
+      slot1.className = 'scan-slot done';
+      slot1val.textContent = code;
+      slot2.className = 'scan-slot active';
+      setStatus('Got Scan 1 — now scan the second code', 'wait');
+    } else {
+      // ---- Second scan of a job ----
+      const scan1 = firstScan;
+      const scan2 = code;
+
+      slot2.className = 'scan-slot done';
+      slot2val.textContent = code;
+      setStatus('Sending job…', '');
+
+      fetch(webAppUrl + '?scan1=' + encodeURIComponent(scan1) + '&scan2=' + encodeURIComponent(scan2))
+        .then(r => r.text())
+        .then(result => {
+          if (result.trim() === 'OK') {
+            setStatus('✓ Job saved: ' + scan1 + ' + ' + scan2, 'ok');
+            logComplete(scan1, scan2);
+          } else {
+            setStatus('Server: ' + result, 'dup');
+          }
+          setTimeout(resetSlots, 1200);
+        })
+        .catch(() => {
+          // no-cors fallback — can't read response
+          setStatus('Sent (no-cors mode)', 'ok');
+          logComplete(scan1, scan2);
+          setTimeout(resetSlots, 1200);
+        });
+    }
+  }
+
+  function logComplete(s1, s2) {
+    const row = document.createElement('div');
+    row.className = 'row complete';
+    row.innerHTML = `
+      <div class="row-codes">
+        <span>${s1}</span> &nbsp;+&nbsp; <span>${s2}</span>
+      </div>
+      <div class="row-time">${new Date().toLocaleTimeString()}</div>
+    `;
+    logEl.insertBefore(row, logEl.children[1] || null);
+  }
+
+  function logDuplicate(code) {
+    const row = document.createElement('div');
+    row.className = 'row duplicate';
+    row.innerHTML = `
+      <div class="row-codes">${code}</div>
+      <span class="badge">DUP</span>
+      <div class="row-time">${new Date().toLocaleTimeString()}</div>
+    `;
+    logEl.insertBefore(row, logEl.children[1] || null);
   }
 
   document.getElementById('startBtn').onclick = function() {
@@ -103,7 +206,7 @@
       onScan,
       function() {}
     ).then(function() {
-      setStatus('Scanning…');
+      setStatus('Scan 1 of 2 — ready', 'wait');
       document.getElementById('startBtn').style.display = 'none';
     }).catch(function(err) {
       setStatus('Error: ' + err);
