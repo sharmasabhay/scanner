@@ -339,6 +339,14 @@ let MANUAL_WEEKLY_MA={};
 // OOS-locked forecast stockhold (overrides threshold calculation for items that have been OOS)
 // User locks these manually based on historical pre-OOS performance
 let OOS_LOCKED_FORECAST={TREATS_FRVG_003:9200,TREATS_FRVG_004:2850};
+// ─── Per-SKU seasonal factors (monthly demand multipliers, keys 1..12 = Jan..Dec) ───
+// Neutral by default: any SKU not listed (or any factor left at 1) behaves EXACTLY as before.
+// A factor scales that month's expected demand vs a normal month, and it's applied to the
+// period stock will actually sell in — so orders bend BEFORE a seasonal turn (e.g. the
+// Dec→Jan dip) instead of lagging the 4-week average by 2–3 weeks. Example (tune + uncomment):
+//   TREATS_SEAF_005:{1:0.65,2:0.8,3:1,4:1,5:1,6:1,7:1,8:1,9:1,10:1.15,11:1.4,12:1.6},
+// = Jan ~35% below baseline, Dec ~60% above (festive). Enter your real per-SKU swings here.
+let SEASONAL={};
 const SEA_ONLY=new Set(['TREATS_FRVG_006']);
 const EXTRA_LEAD=new Set(['TREATS_FRVG_001','TREATS_FRVG_003','TREATS_FRVG_004','TREATS_OSTR_001','TREATS_SEAF_007','TREATS_BEEF_003']);
 const OOS_SKUS=new Set([]);// TREATS_SEAF_005 and TREATS_FRVG_004 cleared OOS on 13/05 (shipment received)
@@ -441,7 +449,7 @@ function getUpcomingPeaks(){
   return peaks;
 }
 
-let seaOrders=[{id:1,sku:'TREATS_SEAF_008',qty:2250,orderDate:'2026-04-17',eta:'2026-05-15',received:true,note:'rcvd 13/05'},{id:2,sku:'TREATS_DUCK_003',qty:10000,orderDate:'2026-04-17',eta:'2026-05-15',received:true,note:'rcvd 13/05 (6kg) + 14/05 (4kg) = 10kg'},{id:3,sku:'TREATS_CHICK_006',qty:10000,orderDate:'2026-04-17',eta:'2026-05-15',received:true,note:'rcvd 13/05 (8.5kg) + 14/05 (1.5kg) = full 10kg'},{id:4,sku:'TREATS_SEAF_003',qty:6000,orderDate:'2026-04-17',eta:'2026-05-15',received:true,note:'rcvd 13/05'},{id:5,sku:'TREATS_SEAF_006',qty:2000,orderDate:'2026-04-17',eta:'2026-05-15',received:true,note:'rcvd 13/05'},{id:6,sku:'TREATS_FRVG_003',qty:10000,orderDate:'2026-04-17',eta:'2026-05-15',received:true,note:'rcvd 13/05'},{id:7,sku:'TREATS_BEEF_003',qty:3000,orderDate:'2026-04-17',eta:'2026-05-15',received:true,note:'rcvd 13/05'},{id:8,sku:'TREATS_BEEF_004_Large',qty:6,orderDate:'2026-04-17',eta:'2026-05-15',received:true,note:'rcvd 13/05 — 6 short (other 6 reordered)'},{id:9,sku:'TREATS_FRVG_002',qty:2500,orderDate:'2026-04-17',eta:'2026-05-15',received:true,note:'rcvd 13/05'},{id:10,sku:'TREATS_FRVG_005',qty:1000,orderDate:'2026-04-17',eta:'2026-05-15',received:true,note:'rcvd 13/05'},{id:11,sku:'TREATS_SEAF_005',qty:3000,orderDate:'2026-04-17',eta:'2026-05-15',received:true,note:'rcvd 13/05 — 500g short'},{id:12,sku:'TREATS_OSTR_001',qty:12,orderDate:'2026-04-17',eta:'2026-05-15',received:true,note:'rcvd 13/05'},{id:13,sku:'TREATS_SEAF_002',qty:1500,orderDate:'2026-04-17',eta:'2026-05-15',received:true,note:'rcvd 13/05'},{id:14,sku:'TREATS_FRVG_004',qty:3000,orderDate:'2026-04-17',eta:'2026-05-15',received:true,note:'rcvd 13/05'},{id:36,sku:'TREATS_BEEF_004_Large',qty:6,orderDate:'2026-05-13',eta:'2026-06-17',received:false,note:'remaining 6 from short-ship — still in CN warehouse'},{id:15,sku:'TREATS_SEAF_005',qty:3000,orderDate:'2026-04-29',eta:'2026-06-19',received:false,note:'CN customs delay · orig ETA 29/05 · earliest 12/06 · buffered 19/06 (2.5-3wk) · recheck ETA 09-12/06'},{id:16,sku:'TREATS_RABB_001',qty:8000,orderDate:'2026-04-29',eta:'2026-06-19',received:false,note:'CN customs delay · orig ETA 29/05 · earliest 12/06 · buffered 19/06 (2.5-3wk) · recheck ETA 09-12/06'},{id:17,sku:'TREATS_BEEF_004_Large',qty:15,orderDate:'2026-04-29',eta:'2026-06-19',received:false,note:'CN customs delay · orig ETA 29/05 · earliest 12/06 · buffered 19/06 (2.5-3wk) · recheck ETA 09-12/06'},{id:18,sku:'TREATS_BEEF_005',qty:120,orderDate:'2026-04-29',eta:'2026-06-19',received:false,note:'120 pcs · CN customs delay · orig ETA 29/05 · earliest 12/06 · buffered 19/06 (2.5-3wk) · recheck ETA 09-12/06'},{id:19,sku:'TREATS_SEAF_001',qty:1200,orderDate:'2026-04-29',eta:'2026-06-19',received:false,note:'CN customs delay · orig ETA 29/05 · earliest 12/06 · buffered 19/06 (2.5-3wk) · recheck ETA 09-12/06'},{id:20,sku:'TREATS_SEAF_009',qty:4000,orderDate:'2026-04-29',eta:'2026-06-19',received:false,note:'CN customs delay · orig ETA 29/05 · earliest 12/06 · buffered 19/06 (2.5-3wk) · recheck ETA 09-12/06'},{id:21,sku:'TREATS_SEAF_008',qty:4500,orderDate:'2026-04-29',eta:'2026-06-19',received:false,note:'CN customs delay · orig ETA 29/05 · earliest 12/06 · buffered 19/06 (2.5-3wk) · recheck ETA 09-12/06'},{id:22,sku:'TREATS_CHICK_003',qty:5000,orderDate:'2026-05-11',eta:'2026-06-08',received:false,note:''},{id:23,sku:'TREATS_FRVG_006',qty:6840,orderDate:'2026-05-11',eta:'2026-06-08',received:false,note:'sea only'},{id:24,sku:'TREATS_FRVG_001',qty:3000,orderDate:'2026-05-11',eta:'2026-06-22',received:false,note:'+10d mfr'},{id:25,sku:'TREATS_SEAF_006',qty:3000,orderDate:'2026-05-11',eta:'2026-06-08',received:false,note:''},{id:26,sku:'TREATS_SEAF_005',qty:10000,orderDate:'2026-05-11',eta:'2026-06-08',received:false,note:''},{id:27,sku:'TREATS_SEAF_004',qty:5600,orderDate:'2026-05-11',eta:'2026-06-08',received:false,note:''},{id:28,sku:'TREATS_FRVG_006',qty:6840,orderDate:'2026-05-11',eta:'2026-06-08',received:false,note:'2nd order'},{id:29,sku:'TREATS_BEEF_004_Small',qty:21,orderDate:'2026-05-11',eta:'2026-06-08',received:false,note:''},{id:30,sku:'TREATS_RABB_002',qty:60,orderDate:'2026-05-11',eta:'2026-06-08',received:false,note:''},{id:31,sku:'TREATS_FRVG_005',qty:1500,orderDate:'2026-05-11',eta:'2026-06-08',received:false,note:''},{id:32,sku:'TREATS_DUCK_004',qty:6000,orderDate:'2026-05-11',eta:'2026-06-08',received:false,note:''},{id:33,sku:'TREATS_BEEF_003',qty:5000,orderDate:'2026-05-11',eta:'2026-06-22',received:false,note:'+10d mfr'},{id:34,sku:'TREATS_OSTR_001',qty:20,orderDate:'2026-05-11',eta:'2026-06-22',received:false,note:'+10d mfr'},{id:35,sku:'TREATS_DUCK_001',qty:60000,orderDate:'2026-05-11',eta:'2026-06-08',received:false,note:''},{id:38,sku:'TREATS_SEAF_008',qty:8000,orderDate:'2026-05-15',eta:'2026-06-19',received:false,note:'new order 15/05'},{id:39,sku:'TREATS_CHICK_004',qty:4000,orderDate:'2026-05-15',eta:'2026-06-19',received:false,note:'new order 15/05'},{id:40,sku:'TREATS_SEAF_003',qty:8000,orderDate:'2026-05-15',eta:'2026-06-19',received:false,note:'new order 15/05'},{id:41,sku:'TREATS_FRVG_002',qty:3500,orderDate:'2026-05-15',eta:'2026-06-19',received:false,note:'new order 15/05'},{id:42,sku:'TREATS_CHICK_003',qty:14000,orderDate:'2026-05-18',eta:'2026-06-22',received:false,note:'new order 18/05'},{id:43,sku:'TREATS_FRVG_003',qty:10000,orderDate:'2026-05-25',eta:'2026-07-04',received:false,note:'new order 25/05 · +10d mfr'},{id:44,sku:'TREATS_SEAF_001',qty:2160,orderDate:'2026-05-25',eta:'2026-06-29',received:false,note:'new order 25/05'},{id:45,sku:'TREATS_FRVG_005',qty:3000,orderDate:'2026-05-25',eta:'2026-06-29',received:false,note:'new order 25/05'},{id:46,sku:'TREATS_DUCK_002',qty:40,orderDate:'2026-05-25',eta:'2026-06-29',received:false,note:'new order 25/05'},{id:47,sku:'TREATS_DUCK_003',qty:8000,orderDate:'2026-06-02',eta:'2026-07-07',received:false,note:'new order 02/06 · ETA est. +35d sea'},{id:48,sku:'TREATS_SEAF_002',qty:4500,orderDate:'2026-06-02',eta:'2026-07-07',received:false,note:'new order 02/06 · ETA est. +35d sea'},{id:49,sku:'TREATS_CHICK_006',qty:15000,orderDate:'2026-06-02',eta:'2026-07-07',received:false,note:'new order 02/06 · ETA est. +35d sea'},{id:50,sku:'TREATS_FRVG_004',qty:5000,orderDate:'2026-06-02',eta:'2026-07-17',received:false,note:'Freeze Dried (Purple) Sweet Potato · mfr run starts 02/06 (~10d, ready ~12/06) + 35d sea · bumped 3kg→5kg 02/06 · paired with 4kg air bridge (id:119, lands ~22/06)'}];
+let seaOrders=[{id:1,sku:'TREATS_SEAF_008',qty:2250,orderDate:'2026-04-17',eta:'2026-05-15',received:true,note:'rcvd 13/05'},{id:2,sku:'TREATS_DUCK_003',qty:10000,orderDate:'2026-04-17',eta:'2026-05-15',received:true,note:'rcvd 13/05 (6kg) + 14/05 (4kg) = 10kg'},{id:3,sku:'TREATS_CHICK_006',qty:10000,orderDate:'2026-04-17',eta:'2026-05-15',received:true,note:'rcvd 13/05 (8.5kg) + 14/05 (1.5kg) = full 10kg'},{id:4,sku:'TREATS_SEAF_003',qty:6000,orderDate:'2026-04-17',eta:'2026-05-15',received:true,note:'rcvd 13/05'},{id:5,sku:'TREATS_SEAF_006',qty:2000,orderDate:'2026-04-17',eta:'2026-05-15',received:true,note:'rcvd 13/05'},{id:6,sku:'TREATS_FRVG_003',qty:10000,orderDate:'2026-04-17',eta:'2026-05-15',received:true,note:'rcvd 13/05'},{id:7,sku:'TREATS_BEEF_003',qty:3000,orderDate:'2026-04-17',eta:'2026-05-15',received:true,note:'rcvd 13/05'},{id:8,sku:'TREATS_BEEF_004_Large',qty:6,orderDate:'2026-04-17',eta:'2026-05-15',received:true,note:'rcvd 13/05 — 6 short (other 6 reordered)'},{id:9,sku:'TREATS_FRVG_002',qty:2500,orderDate:'2026-04-17',eta:'2026-05-15',received:true,note:'rcvd 13/05'},{id:10,sku:'TREATS_FRVG_005',qty:1000,orderDate:'2026-04-17',eta:'2026-05-15',received:true,note:'rcvd 13/05'},{id:11,sku:'TREATS_SEAF_005',qty:3000,orderDate:'2026-04-17',eta:'2026-05-15',received:true,note:'rcvd 13/05 — 500g short'},{id:12,sku:'TREATS_OSTR_001',qty:12,orderDate:'2026-04-17',eta:'2026-05-15',received:true,note:'rcvd 13/05'},{id:13,sku:'TREATS_SEAF_002',qty:1500,orderDate:'2026-04-17',eta:'2026-05-15',received:true,note:'rcvd 13/05'},{id:14,sku:'TREATS_FRVG_004',qty:3000,orderDate:'2026-04-17',eta:'2026-05-15',received:true,note:'rcvd 13/05'},{id:36,sku:'TREATS_BEEF_004_Large',qty:6,orderDate:'2026-05-13',eta:'2026-06-17',received:false,note:'remaining 6 from short-ship — still in CN warehouse'},{id:15,sku:'TREATS_SEAF_005',qty:3000,orderDate:'2026-04-29',eta:'2026-07-03',received:false,note:'CN customs delay (2nd push) · 29/05 → 19/06 → now 03/07 · supplier flags 26/06–03/07, using worst case · recheck ~20/06'},{id:16,sku:'TREATS_RABB_001',qty:8000,orderDate:'2026-04-29',eta:'2026-07-03',received:false,note:'CN customs delay (2nd push) · 29/05 → 19/06 → now 03/07 · supplier flags 26/06–03/07, using worst case · recheck ~20/06'},{id:17,sku:'TREATS_BEEF_004_Large',qty:15,orderDate:'2026-04-29',eta:'2026-07-03',received:false,note:'CN customs delay (2nd push) · 29/05 → 19/06 → now 03/07 · supplier flags 26/06–03/07, using worst case · recheck ~20/06'},{id:18,sku:'TREATS_BEEF_005',qty:120,orderDate:'2026-04-29',eta:'2026-07-03',received:false,note:'120 pcs · CN customs delay (2nd push) · 29/05 → 19/06 → now 03/07 · supplier flags 26/06–03/07, using worst case · recheck ~20/06'},{id:19,sku:'TREATS_SEAF_001',qty:1200,orderDate:'2026-04-29',eta:'2026-07-03',received:false,note:'CN customs delay (2nd push) · 29/05 → 19/06 → now 03/07 · supplier flags 26/06–03/07, using worst case · recheck ~20/06'},{id:20,sku:'TREATS_SEAF_009',qty:4000,orderDate:'2026-04-29',eta:'2026-07-03',received:false,note:'CN customs delay (2nd push) · 29/05 → 19/06 → now 03/07 · supplier flags 26/06–03/07, using worst case · recheck ~20/06'},{id:21,sku:'TREATS_SEAF_008',qty:4500,orderDate:'2026-04-29',eta:'2026-07-03',received:false,note:'CN customs delay (2nd push) · 29/05 → 19/06 → now 03/07 · supplier flags 26/06–03/07, using worst case · recheck ~20/06'},{id:22,sku:'TREATS_CHICK_003',qty:5000,orderDate:'2026-05-11',eta:'2026-06-08',received:false,note:''},{id:23,sku:'TREATS_FRVG_006',qty:6840,orderDate:'2026-05-11',eta:'2026-06-08',received:false,note:'sea only'},{id:24,sku:'TREATS_FRVG_001',qty:3000,orderDate:'2026-05-11',eta:'2026-06-22',received:false,note:'+10d mfr'},{id:25,sku:'TREATS_SEAF_006',qty:3000,orderDate:'2026-05-11',eta:'2026-06-08',received:false,note:''},{id:26,sku:'TREATS_SEAF_005',qty:10000,orderDate:'2026-05-11',eta:'2026-06-08',received:false,note:''},{id:27,sku:'TREATS_SEAF_004',qty:5600,orderDate:'2026-05-11',eta:'2026-06-08',received:false,note:''},{id:28,sku:'TREATS_FRVG_006',qty:6840,orderDate:'2026-05-11',eta:'2026-06-08',received:false,note:'2nd order'},{id:29,sku:'TREATS_BEEF_004_Small',qty:21,orderDate:'2026-05-11',eta:'2026-06-08',received:false,note:''},{id:30,sku:'TREATS_RABB_002',qty:60,orderDate:'2026-05-11',eta:'2026-06-08',received:false,note:''},{id:31,sku:'TREATS_FRVG_005',qty:1500,orderDate:'2026-05-11',eta:'2026-06-08',received:false,note:''},{id:32,sku:'TREATS_DUCK_004',qty:6000,orderDate:'2026-05-11',eta:'2026-06-08',received:false,note:''},{id:33,sku:'TREATS_BEEF_003',qty:5000,orderDate:'2026-05-11',eta:'2026-06-22',received:false,note:'+10d mfr'},{id:34,sku:'TREATS_OSTR_001',qty:20,orderDate:'2026-05-11',eta:'2026-06-22',received:false,note:'+10d mfr'},{id:35,sku:'TREATS_DUCK_001',qty:60000,orderDate:'2026-05-11',eta:'2026-06-08',received:false,note:''},{id:38,sku:'TREATS_SEAF_008',qty:8000,orderDate:'2026-05-15',eta:'2026-06-19',received:false,note:'new order 15/05'},{id:39,sku:'TREATS_CHICK_004',qty:4000,orderDate:'2026-05-15',eta:'2026-06-19',received:false,note:'new order 15/05'},{id:40,sku:'TREATS_SEAF_003',qty:8000,orderDate:'2026-05-15',eta:'2026-06-19',received:false,note:'new order 15/05'},{id:41,sku:'TREATS_FRVG_002',qty:3500,orderDate:'2026-05-15',eta:'2026-06-19',received:false,note:'new order 15/05'},{id:42,sku:'TREATS_CHICK_003',qty:14000,orderDate:'2026-05-18',eta:'2026-06-22',received:false,note:'new order 18/05'},{id:43,sku:'TREATS_FRVG_003',qty:10000,orderDate:'2026-05-25',eta:'2026-07-04',received:false,note:'new order 25/05 · +10d mfr'},{id:44,sku:'TREATS_SEAF_001',qty:2160,orderDate:'2026-05-25',eta:'2026-06-29',received:false,note:'new order 25/05'},{id:45,sku:'TREATS_FRVG_005',qty:3000,orderDate:'2026-05-25',eta:'2026-06-29',received:false,note:'new order 25/05'},{id:46,sku:'TREATS_DUCK_002',qty:40,orderDate:'2026-05-25',eta:'2026-06-29',received:false,note:'new order 25/05'},{id:47,sku:'TREATS_DUCK_003',qty:8000,orderDate:'2026-06-02',eta:'2026-07-07',received:false,note:'new order 02/06 · ETA est. +35d sea'},{id:48,sku:'TREATS_SEAF_002',qty:4500,orderDate:'2026-06-02',eta:'2026-07-07',received:false,note:'new order 02/06 · ETA est. +35d sea'},{id:49,sku:'TREATS_CHICK_006',qty:15000,orderDate:'2026-06-02',eta:'2026-07-07',received:false,note:'new order 02/06 · ETA est. +35d sea'},{id:50,sku:'TREATS_FRVG_004',qty:5000,orderDate:'2026-06-02',eta:'2026-07-17',received:false,note:'Freeze Dried (Purple) Sweet Potato · mfr run starts 02/06 (~10d, ready ~12/06) + 35d sea · bumped 3kg→5kg 02/06 · paired with 4kg air bridge (id:119, lands ~22/06)'}];
 let airOrders=[{id:103,sku:'TREATS_FRVG_005',qty:500,orderDate:'2026-05-11',eta:'2026-05-22',received:true,shipped:true,note:'air ETA 22/05 · rcvd 18/05 (early)'},{id:104,sku:'TREATS_CHICK_003',qty:4000,orderDate:'2026-05-11',eta:'2026-05-22',received:true,shipped:true,note:'air ETA 22/05 · rcvd 18/05 (early)'},{id:105,sku:'TREATS_FRVG_001',qty:1500,orderDate:'2026-05-11',eta:'2026-05-22',received:false,shipped:true,note:'air ETA 22/05'},{id:106,sku:'TREATS_SEAF_009',qty:1500,orderDate:'2026-05-14',eta:'2026-05-22',received:true,shipped:true,note:'air ETA 22/05 — short-ship recovery · rcvd 21/05'},{id:107,sku:'TREATS_DUCK_004',qty:2000,orderDate:'2026-05-15',eta:'2026-05-25',received:true,shipped:true,note:'new air order 15/05 · rcvd 21/05'},{id:108,sku:'TREATS_SEAF_004',qty:1600,orderDate:'2026-05-15',eta:'2026-05-25',received:true,shipped:true,note:'new air order 15/05 · rcvd 21/05'},{id:109,sku:'TREATS_SEAF_008',qty:1000,orderDate:'2026-05-15',eta:'2026-05-25',received:true,shipped:true,note:'new air order 15/05 · rcvd 21/05'},{id:110,sku:'TREATS_OSTR_001',qty:20,orderDate:'2026-05-18',eta:'2026-05-28',received:false,shipped:true,note:'new air order 18/05'},{id:111,sku:'TREATS_FRVG_001',qty:2500,orderDate:'2026-05-18',eta:'2026-05-28',received:false,shipped:true,note:'new air order 18/05'},{id:112,sku:'TREATS_RABB_002',qty:25,orderDate:'2026-05-20',eta:'2026-06-06',received:false,shipped:true,note:'mfr issue — restart 20/05, +7d mfr +10d air (orig 18/05 ETA 28/05)'},{id:113,sku:'TREATS_SEAF_002',qty:2200,orderDate:'2026-05-18',eta:'2026-05-28',received:false,shipped:true,note:'new air order 18/05'},{id:114,sku:'TREATS_CHICK_003',qty:4000,orderDate:'2026-05-21',eta:'2026-05-31',received:false,shipped:true,note:'2nd air bridge ordered 21/05'},{id:115,sku:'TREATS_SEAF_008',qty:2000,orderDate:'2026-06-02',eta:'2026-06-05',received:false,shipped:true,note:'new air order · ETA 05/06'},{id:116,sku:'TREATS_SEAF_001',qty:1080,orderDate:'2026-06-02',eta:'2026-06-05',received:false,shipped:true,note:'new air order · ETA 05/06 · listed as Salmon Tail Bone, mapped to Salmon Tail (SEAF_001)'},{id:117,sku:'TREATS_RABB_001',qty:3000,orderDate:'2026-06-02',eta:'2026-06-05',received:false,shipped:true,note:'new air order · ETA 05/06'},{id:118,sku:'TREATS_FRVG_005',qty:1200,orderDate:'2026-06-02',eta:'2026-06-05',received:false,shipped:true,note:'new air order · ETA 05/06'},{id:119,sku:'TREATS_FRVG_004',qty:4000,orderDate:'2026-06-02',eta:'2026-06-22',received:false,shipped:true,note:'air bridge placed 02/06 · waits for 10d run (ready ~12/06) +10d air'},{id:120,sku:'TREATS_SEAF_009',qty:1000,orderDate:'2026-06-02',eta:'2026-06-12',received:false,shipped:true,note:'air placed 02/06 · +10d air'},{id:121,sku:'TREATS_FRVG_003',qty:4500,orderDate:'2026-06-02',eta:'2026-06-19',received:false,shipped:true,note:'air bridge placed 02/06 · separate batch +7d mfr +10d air'}];
 // Pre-loaded receipts (15/05 baseline). Each has a stable `seedUuid` so when
 // these get backfilled into the InventoryLog sheet, the replay layer will
@@ -899,6 +907,25 @@ function computeStats(){
       // We need to project stock forward through each pending arrival chronologically
       // not just lump everything into "effective stock today"
       
+      // ─── Per-SKU seasonal layer (neutral unless SEASONAL[sku] is set) ─
+      // Scales burn over time AND the order target to the period stock will actually
+      // sell in. With no factors, every helper reduces exactly to the flat adjDaily
+      // formula (validated). seasRatio short-circuits to 1 for unlisted SKUs, so the
+      // neutral path stays cheap.
+      const _t0=today();
+      const _sf=SEASONAL[sku];
+      const _baseF=_sf?(_sf[_t0.getMonth()+1]||1):1;
+      const seasRatio=off=>{ if(!_sf||!_baseF)return 1; const m=addDays(_t0,off).getMonth()+1; return (_sf[m]||1)/_baseF; };
+      const _SEAS_H=760, _cum=new Float64Array(_SEAS_H+2);
+      for(let _d=1;_d<=_SEAS_H+1;_d++)_cum[_d]=_cum[_d-1]+adjDaily*seasRatio(_d);
+      const burnBetween=(a,b)=>{ if(b<=a)return 0; a=Math.max(0,a); b=Math.min(_SEAS_H,b);
+        const ia=Math.floor(a),ib=Math.floor(b); let s=_cum[ib]-_cum[ia];
+        s-=adjDaily*seasRatio(ia+1)*(a-ia); s+=adjDaily*seasRatio(ib+1)*(b-ib); return Math.max(0,s); };
+      const daysToZero=(stk,fromDay)=>{ if(stk<=0)return 0; if(adjDaily<=0)return Infinity;
+        let rem=stk,d=Math.floor(fromDay); while(d<_SEAS_H){ const r=adjDaily*seasRatio(d+1);
+          if(r<=0){d++;continue;} if(rem<=r)return (d-fromDay)+rem/r; rem-=r; d++; } return _SEAS_H-fromDay; };
+      const coverDemand=(fromDay,weeks)=>burnBetween(fromDay,fromDay+weeks*7);
+
       // Sort pending arrivals by ETA (unshipped air = no ETA = treat as far future or skip from simulation)
       const arrivalsForSim=[
         ...pendSeaOrders.filter(o=>o.eta).map(o=>({eta:new Date(o.eta),qty:o.qty||0,type:'sea'})),
@@ -915,13 +942,13 @@ function computeStats(){
           if(dayOfArrival<0)continue;  // already past — should be received
           if(dayOfArrival>daysFromToday)break;  // arrives after target
           // burn from prevDay to dayOfArrival
-          stock-=adjDaily*(dayOfArrival-prevDay);
+          stock-=burnBetween(prevDay,dayOfArrival);
           stock=Math.max(0,stock);  // can't go below 0
           stock+=arr.qty;
           prevDay=dayOfArrival;
         }
         // burn remaining time to target
-        stock-=adjDaily*(daysFromToday-prevDay);
+        stock-=burnBetween(prevDay,daysFromToday);
         return stock;
       }
       
@@ -935,15 +962,15 @@ function computeStats(){
           if(dayOfArrival<0)continue;
           if(dayOfArrival>horizonDays)break;
           // Check if stockout happens between prevDay and dayOfArrival
-          const daysUntilZero=stock/adjDaily;
+          const daysUntilZero=daysToZero(stock,prevDay);
           if(daysUntilZero<(dayOfArrival-prevDay))return addDays(today(),prevDay+daysUntilZero);
-          stock-=adjDaily*(dayOfArrival-prevDay);
+          stock-=burnBetween(prevDay,dayOfArrival);
           stock+=arr.qty;
           prevDay=dayOfArrival;
         }
         // After all arrivals: when does remaining stock hit 0?
         if(stock<=0)return addDays(today(),prevDay);
-        const daysRemaining=stock/adjDaily;
+        const daysRemaining=daysToZero(stock,prevDay);
         if(prevDay+daysRemaining<=horizonDays)return addDays(today(),prevDay+daysRemaining);
         return null;
       }
@@ -1004,7 +1031,8 @@ function computeStats(){
       // Use max(0, orderByDays) so we don't go back in time for overdue items
       const seaArrivalDay=Math.max(0,orderByDays)+leadDays;
       const stockAtSeaArrival=Math.max(0,projectStock(seaArrivalDay));
-      const seaOrderQty=Math.ceil(Math.max(0,threshQty-stockAtSeaArrival)*wasteMult(sku));
+      const seaTargetAtArrival=useLocked?threshQty:coverDemand(seaArrivalDay,thresh);
+      const seaOrderQty=Math.ceil(Math.max(0,seaTargetAtArrival-stockAtSeaArrival)*wasteMult(sku));
       
       // ─── Air bridge logic (v12: multi-stockout detection) ─────────────
       // Old logic only checked the first stockout window. If stock recovered
@@ -1052,13 +1080,13 @@ function computeStats(){
           // Phase 1: burn from prevDay → nextEvent.day, checking if we hit zero
           if(stock>0){
             const daysAvailable=nextEvent.day-prevDay;
-            const burnUntilZero=stock/adjDaily;
+            const burnUntilZero=daysToZero(stock,prevDay);
             if(burnUntilZero<daysAvailable){
               // Stockout occurs within this segment
               gapStart=prevDay+burnUntilZero;
               stock=0;
             } else {
-              stock-=adjDaily*daysAvailable;
+              stock-=burnBetween(prevDay,nextEvent.day);
             }
           }
           // We've reached nextEvent.day with current stock level
@@ -1069,7 +1097,7 @@ function computeStats(){
             // Only count gaps where the endpoint is after a possible air arrival
             // (otherwise air can't help)
             if(gapEnd>airLeadTotal&&gapDays>=1){
-              const gapQty=Math.ceil(gapDays*adjDaily);
+              const gapQty=Math.ceil(burnBetween(gapStart,gapEnd));
               airGaps.push({fromDay:gapStart,toDay:gapEnd,days:gapDays,qty:gapQty,replenishedBy:nextEvent.day});
             }
             gapStart=null;
@@ -1125,10 +1153,12 @@ function computeStats(){
       // Qty: threshold minus projected stock at arrival (if ordering on the order-by date)
       const nextCycleArrivalDay=nextCycleOrderByDays!==null?Math.max(0,nextCycleOrderByDays)+leadDays:null;
       const nextCycleStockAtArrival=nextCycleArrivalDay!==null?Math.max(0,projectStock(nextCycleArrivalDay)):0;
-      const nextCycleOrderQty=Math.ceil(Math.max(0,threshQty-nextCycleStockAtArrival)*wasteMult(sku));
+      const nextCycleTarget=useLocked?threshQty:(nextCycleArrivalDay!==null?coverDemand(nextCycleArrivalDay,thresh):threshQty);
+      const nextCycleOrderQty=Math.ceil(Math.max(0,nextCycleTarget-nextCycleStockAtArrival)*wasteMult(sku));
 
       // Legacy seaTopupShortfall kept for backward compat (fires when pending arrival itself < threshold)
-      const seaTopupShortfall=Math.max(0,threshQty-Math.max(0,stockAfterAllPending));
+      const seaTopupTarget=useLocked?threshQty:(lastPendingDay>0?coverDemand(lastPendingDay,thresh):threshQty);
+      const seaTopupShortfall=Math.max(0,seaTopupTarget-Math.max(0,stockAfterAllPending));
       let seaTopupOrderByDays=null,seaTopupOrderByDate=null,seaTopupQty=0;
       if(seaTopupShortfall>0){
         let dayBelowPostPending=null;
