@@ -358,6 +358,8 @@ const CBM_OBSERVATIONS=[
   {date:'2026-06-12',dims:'33x24x19',cbm:0.015048,items:[{sku:'TREATS_SEAF_009',qty:1000}]}, // Tuna cubes (FD) — direct → 0.01505/kg
   {date:'2026-06-12',dims:'36x22x24',cbm:0.019008,items:[{sku:'TREATS_FRVG_001',qty:1500}]}, // Strawberry (FD) — direct → 0.01267/kg
   {date:'2026-06-12',dims:'44x33x43',cbm:0.062436,items:[{sku:'TREATS_CHICK_003',qty:4000},{sku:'TREATS_FRVG_005',qty:500}]}, // Chicken Breast Cubes + Brussels Sprout — combined, unsolved
+  {date:'2026-06-23',dims:'65x38x44',cbm:0.10868,items:[{sku:'TREATS_SEAF_002',qty:1200},{sku:'TREATS_SEAF_009',qty:1000},{sku:'TREATS_BEEF_005',qty:76},{sku:'TREATS_FRVG_004',qty:1000}]}, // Prawn + Tuna + Cow Skin(pcs) + Purple Sweet Potato — combined (8.9kg gross, vol-wt 18.2). Tuna density known (0.01505/kg); 3 unknowns remain (prawn, cow-skin/pc, purple sweet potato) — not individually solvable yet
+  {date:'2026-06-23',dims:'62x30x41',cbm:0.07626,items:[{sku:'TREATS_SEAF_003',qty:2500},{sku:'TREATS_RABB_001',qty:5000}]}, // Shark Cartilage + Rabbit Ear — combined (8.7kg gross, vol-wt 12.8). Chains to the cow-skin+rabbit-ear box via rabbit ear: solving any ONE of {cow skin, rabbit ear, shark cartilage} cascades to all three. System still 2 single-SKU boxes short of full solve.
 ];
 // Estimate volume (m³) for an order. Grams SKUs use per-kg density (measured, else blended).
 // Pcs SKUs use per-pc density; returns null if that pcs SKU hasn't been measured yet.
