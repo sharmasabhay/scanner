@@ -347,7 +347,7 @@ const PALLET_CBM=1.0;
 let CBM_OWN_TARGET=0.55;
 // Per-SKU shipping density (m³ per kg), derived from box-dimension observations below.
 let CBM_PER_KG={TREATS_SEAF_005:0.01526,TREATS_DUCK_003:0.00865,TREATS_SEAF_009:0.01505,TREATS_FRVG_001:0.01267,TREATS_SEAF_001:0.00809,TREATS_FRVG_004:0.00702};
-let CBM_PER_PC={};               // pcs SKUs (e.g. Cow Skin) — need single-SKU box dims to populate
+let CBM_PER_PC={TREATS_SEAF_007:0.0006528};   // pcs SKUs — Giant Squid Legs solved from solo box 34×24×20 (25pc, 0.6kg, 26/06)
 let CBM_DEFAULT_PER_KG=0.0127;   // blended ref across all measured grams observations (~0.0127 m³/kg)
 const CBM_OBSERVATIONS=[
   {date:'2026-06-12',cbm:0.2,items:[{sku:'TREATS_SEAF_004',qty:7200},{sku:'TREATS_DUCK_004',qty:8000}]}, // Shishamo + Duck Breast Fillet (FD) — combined, unsolved
@@ -361,6 +361,7 @@ const CBM_OBSERVATIONS=[
   {date:'2026-06-23',dims:'65x38x44',cbm:0.10868,items:[{sku:'TREATS_SEAF_002',qty:1200},{sku:'TREATS_SEAF_009',qty:1000},{sku:'TREATS_BEEF_005',qty:76},{sku:'TREATS_FRVG_004',qty:1000}]}, // Prawn + Tuna + Cow Skin(pcs) + Purple Sweet Potato — combined (8.9kg gross, vol-wt 18.2). Tuna density known (0.01505/kg); 3 unknowns remain (prawn, cow-skin/pc, purple sweet potato) — not individually solvable yet
   {date:'2026-06-23',dims:'62x30x41',cbm:0.07626,items:[{sku:'TREATS_SEAF_003',qty:2500},{sku:'TREATS_RABB_001',qty:5000}]}, // Shark Cartilage + Rabbit Ear — combined (8.7kg gross, vol-wt 12.8). Chains to the cow-skin+rabbit-ear box via rabbit ear: solving any ONE of {cow skin, rabbit ear, shark cartilage} cascades to all three. System still 2 single-SKU boxes short of full solve.
   {date:'2026-06-23',dims:'26x15x18',cbm:0.00702,items:[{sku:'TREATS_FRVG_004',qty:1000}]}, // Purple Sweet Potato (FD) — direct single-SKU → 0.00702/kg (SOLVED). Removes purple SP from box B, leaving 76·cowskin + 1.2·prawn = 0.08661. The web {cow skin, rabbit ear, shark cartilage, prawn} is now ONE single-SKU box from fully solving — any one of those four cracks all four.
+  {date:'2026-06-26',dims:'34x24x20',cbm:0.01632,items:[{sku:'TREATS_SEAF_007',qty:25}]}, // Giant Squid Legs — solo box (0.6kg gross, vol-wt 2.8) → 0.0006528 m³/pc (SOLVED, first pcs density). Helps size squid air parcels.
 ];
 // Estimate volume (m³) for an order. Grams SKUs use per-kg density (measured, else blended).
 // Pcs SKUs use per-pc density; returns null if that pcs SKU hasn't been measured yet.
