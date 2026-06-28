@@ -422,7 +422,8 @@ const DEHY={TREATS_BEEF_001:{ingQty:4.5455,uom:'g',hours:12,kgDoor:10,temp:80},T
 // Production category: 'cut' = process during day, dehy night (12h items) — counts against 4-door daily limit
 //                       'thaw' = thaw night before, dehy morning (40-50h items) — uses 6-door pool, no daily limit
 const PROD_CAT={TREATS_BEEF_001:'cut',TREATS_BEEF_002:'cut',TREATS_PORK_001:'cut',TREATS_CHICK_001:'cut',TREATS_KANG_001:'cut',TREATS_PORK_002:'cut',TREATS_TURK_001:'cut',TREATS_CROC_001:'cut',TREATS_PORK_004:'cut',TREATS_DUCK_005:'cut',TREATS_CHICK_002:'cut',TREATS_DUCK_006:'thaw',TREATS_CHICK_005:'thaw',TREATS_CROC_002:'thaw',TREATS_CROC_003:'thaw',TREATS_PORK_005_Medium:'thaw',TREATS_PORK_005_Jumbo:'thaw'};
-const CUT_DOOR_LIMIT=4;  // short-handed: max 4 doors/day for cut-into-strips items
+const CUT_DOOR_LIMIT=6;       // normal cut-into-strips items: up to the full 6-door machine
+const HP_CUT_DOOR_LIMIT=4;    // croc & kang jerky: cutting labour caps these at 4 doors/day even with 6 doors
 // High-processing items: croc jerky and kangaroo jerky need their own dedicated day
 const HIGH_PROCESSING=new Set(['TREATS_CROC_001','TREATS_KANG_001']);
 // Afternoon-process eligible: items that CAN be processed (thaw + cut/strip if needed)
@@ -478,7 +479,7 @@ function sessionsToTopupFromZero(s){
   const dh=DEHY[s.sku];
   if(!dh||!s.threshQty||!s.adjDaily)return 0;
   const cat=(typeof PROD_CAT!=='undefined'&&PROD_CAT[s.sku])||'cut';
-  const maxDoorsPerSlot=cat==='cut'?CUT_DOOR_LIMIT:MAX_DOORS;
+  const maxDoorsPerSlot=cat==='cut'?(HIGH_PROCESSING.has(s.sku)?HP_CUT_DOOR_LIMIT:CUT_DOOR_LIMIT):MAX_DOORS;
   const outputPerDoor=dh.uom==='pcs'?dh.kgDoor:(dh.kgDoor*1000/dh.ingQty);
   const doorsAtFull=Math.ceil(s.threshQty/outputPerDoor);
   return Math.max(1,Math.ceil(doorsAtFull/maxDoorsPerSlot));
@@ -2499,8 +2500,8 @@ function renderProduction(){
     const dh=DEHY[s.sku];
     const need=s.prodNeeded;
     const cat=PROD_CAT[s.sku]||'cut';
-    const maxDoorsPerSlot=cat==='cut'?CUT_DOOR_LIMIT:MAX_DOORS;
     const highProc=HIGH_PROCESSING.has(s.sku);
+    const maxDoorsPerSlot=cat==='cut'?(highProc?HP_CUT_DOOR_LIMIT:CUT_DOOR_LIMIT):MAX_DOORS;
     // Triggered = weeksOnHand < tier threshold. SKUs below trigger get scheduled
     // first; non-triggered SKUs still scheduled but at lower priority.
     const triggered=!s.ihHealthy;
@@ -2812,7 +2813,8 @@ function renderProduction(){
 
     // Cut category limits (whole-door path)
     if(item.cat==='cut'){
-      if(d.cutDoorsUsed+item.doors>CUT_DOOR_LIMIT)return false;
+      const cutCap=item.highProc?HP_CUT_DOOR_LIMIT:CUT_DOOR_LIMIT;
+      if(d.cutDoorsUsed+item.doors>cutCap)return false;
       // High-processing rule: if this item is HP, day must have no other cut items
       // If day already has HP cut items, no other cut items can join
       if(item.highProc&&d.cutItemsCount>0)return false;
@@ -3063,7 +3065,7 @@ function renderProduction(){
 
   // Daily schedule — only render from firstDayIdx onward (past days are hidden
   // since they're either already done or not actionable anymore).
-  h+=`<div class="sec"><div class="sec-title">daily production plan <span class="count">${CUT_DOOR_LIMIT}-door cap on cut items · ${MAX_DOORS} doors total · Mon–Sat 9am–8:30pm</span></div>`;
+  h+=`<div class="sec"><div class="sec-title">daily production plan <span class="count">${CUT_DOOR_LIMIT}-door cap on cut items (${HP_CUT_DOOR_LIMIT} for croc/kang) · ${MAX_DOORS} doors total · Mon–Sat 9am–8:30pm</span></div>`;
   days.forEach((d,di)=>{
     if(di<firstDayIdx)return;  // skip past days
     const ds=d.date.toLocaleDateString('en-SG',{weekday:'long',day:'numeric',month:'short'});
@@ -3073,7 +3075,7 @@ function renderProduction(){
     const borderColor=d.isPH?'border-color:var(--red)':isToday?'border-color:var(--green)':'';
     h+=`<div class="prod-day" style="${borderColor}"><div class="prod-day-hdr"><span style="${d.isPH?'color:var(--red);font-weight:600':isToday?'color:var(--green);font-weight:600':''}">${ds}${isToday?' · TODAY':''}${d.isPH?' · 🚫 PUBLIC HOLIDAY':''}</span>`;
     h+=`<div style="display:flex;gap:10px;align-items:center;font-size:10px;color:var(--text3);font-family:var(--mono)">`;
-    if(d.cutDoorsUsed>0)h+=`<span>cut: ${d.cutDoorsUsed}/${CUT_DOOR_LIMIT} doors</span>`;
+    if(d.cutDoorsUsed>0)h+=`<span>cut: ${d.cutDoorsUsed}/${d.hasHighProc?HP_CUT_DOOR_LIMIT:CUT_DOOR_LIMIT} doors</span>`;
     if(d.hasHighProc)h+=`<span style="color:var(--red)">⚙ HP day</span>`;
     if(di===5&&!empty)h+=`<span style="color:var(--orange);font-weight:600">⚠ Sat — needs special arrangement</span>`;
     // v9: copy-day-to-calendar button (only if there's something to copy)
@@ -3204,7 +3206,7 @@ function renderProduction(){
     const cdStrs=combinedDoorList.map(c=>`${c.day} ${c.when}: ${c.items.map(i=>i.name).join(' + ')} (${Math.round(c.fill*100)}% full)`);
     h+=`<div class="alert al-info" style="margin-top:14px;background:rgba(80,150,255,0.06);border-color:rgba(80,150,255,0.25);color:var(--text2)">🧩 <strong>Combined doors this week:</strong> ${cdStrs.join('; ')}. Slow-moving SKUs whose top-up fits in less than one door share a physical door with other partial-fill SKUs at the same temp+hours.</div>`;
   }
-  h+=`<div class="note">categories: 🟧 cut = process during day, dehy night | 🟪 thaw = thaw night before, dehy next morning | ⚙ HP = high-processing (croc/kang jerky) needs dedicated day · multi-day SKUs are split into sessions (e.g. <span class="badge b-blue" style="font-size:9px">2/3</span>) on separate days to fit the ${CUT_DOOR_LIMIT}-door cap · 🧩 partial-fill SKUs share a physical door with other partial-fill SKUs at the same temperature + dehy hours · tier tags: <span class="badge b-orange" style="font-size:9px">fast</span> = 3+ sessions to top up (trigger at ${fmtW(IH_TRIGGER_FAST_WKS)}w) · <span class="badge b-yellow" style="font-size:9px">medium</span> = 2 sessions (trigger at ${fmtW(IH_TRIGGER_MEDIUM_WKS)}w) · <span class="badge b-gray" style="font-size:9px">slow</span> = 1 session (trigger at ${fmtW(IH_TRIGGER_SLOW_WKS)}w) · machine timer max 24h triggers a reset · no Sunday work means no Mon morning thaw items and no Sun resets</div>`;
+  h+=`<div class="note">categories: 🟧 cut = process during day, dehy night | 🟪 thaw = thaw night before, dehy next morning | ⚙ HP = high-processing (croc/kang jerky) needs dedicated day · multi-day SKUs are split into sessions (e.g. <span class="badge b-blue" style="font-size:9px">2/3</span>) on separate days to fit the ${CUT_DOOR_LIMIT}-door cut cap (${HP_CUT_DOOR_LIMIT} for croc/kang) · 🧩 partial-fill SKUs share a physical door with other partial-fill SKUs at the same temperature + dehy hours · tier tags: <span class="badge b-orange" style="font-size:9px">fast</span> = 3+ sessions to top up (trigger at ${fmtW(IH_TRIGGER_FAST_WKS)}w) · <span class="badge b-yellow" style="font-size:9px">medium</span> = 2 sessions (trigger at ${fmtW(IH_TRIGGER_MEDIUM_WKS)}w) · <span class="badge b-gray" style="font-size:9px">slow</span> = 1 session (trigger at ${fmtW(IH_TRIGGER_SLOW_WKS)}w) · machine timer max 24h triggers a reset · no Sunday work means no Mon morning thaw items and no Sun resets</div>`;
   document.getElementById('prodContent').innerHTML=h;
 }
 
