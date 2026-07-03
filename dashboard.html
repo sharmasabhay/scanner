@@ -456,7 +456,7 @@ const BRIDGE_GRACE_DAYS=14;
 // shipments arrive while stock remains, instead of landing at empty (which forced
 // weekly air). SAFETY_WKS = extra weeks of cover held as a floor; the sea order-by
 // fires when stock would drop to that floor − lead, not at zero − lead.
-const SAFETY_WKS=2;
+const SAFETY_WKS=1.5;  // arrival buffer: shipments sized/timed to land with ~1.5 weeks of cover left (was 2)
 // Slow / lumpy movers (low burn, ordered in pieces) get the OPPOSITE treatment:
 // no safety buffer and never air-bridged — one minimum batch is already months of
 // cover, so over-ordering is the real risk, not stockout. Auto-classified by UOM==='pcs';
@@ -977,12 +977,33 @@ function computeStats(){
       else { const ups=measureUplifts(sku,dayData); const recent=ups.slice(-SALE_UPLIFT_EVENTS); upliftEventsUsed=recent.length; expectedUplift=recent.length?recent.reduce((a,b)=>a+b,0)/recent.length:0; }
     }
 
+    // ─── Unified demand model (hoisted 03 Jul 2026) ──────────────────────────
+    // One burn curve now drives threshold, floor, timing, order qty AND in-house
+    // production, so they can't disagree. Includes the per-SKU seasonal layer
+    // (neutral unless SEASONAL[sku] set) and scheduled N.N sale uplift booked on each
+    // upcoming anchor. With no seasonal factors and expectedUplift=0, every helper
+    // reduces EXACTLY to the flat adjDaily formula (coverDemand(0,w)=adjDaily*7*w).
+    const _t0=today();
+    const _sf=SEASONAL[sku];
+    const _baseF=_sf?(_sf[_t0.getMonth()+1]||1):1;
+    const seasRatio=off=>{ if(!_sf||!_baseF)return 1; const m=addDays(_t0,off).getMonth()+1; return (_sf[m]||1)/_baseF; };
+    const _SEAS_H=760, _cum=new Float64Array(_SEAS_H+2);
+    for(let _d=1;_d<=_SEAS_H+1;_d++)_cum[_d]=_cum[_d-1]+adjDaily*seasRatio(_d);
+    const upliftInWindow=(a,b)=>{ if(!expectedUplift)return 0; let n=0; for(const o of saleOffsetsGlobal){ if(o>a&&o<=b)n++; } return n*expectedUplift; };
+    const burnBetween=(a,b)=>{ if(b<=a)return 0; a=Math.max(0,a); b=Math.min(_SEAS_H,b);
+      const ia=Math.floor(a),ib=Math.floor(b); let s=_cum[ib]-_cum[ia];
+      s-=adjDaily*seasRatio(ia+1)*(a-ia); s+=adjDaily*seasRatio(ib+1)*(b-ib); return Math.max(0,s)+upliftInWindow(a,b); };
+    const daysToZero=(stk,fromDay)=>{ if(stk<=0)return 0; if(adjDaily<=0&&!expectedUplift)return Infinity;
+      let rem=stk,d=Math.floor(fromDay); while(d<_SEAS_H){ let r=adjDaily*seasRatio(d+1); if(saleSetGlobal.has(d+1))r+=expectedUplift;
+        if(r<=0){d++;continue;} if(rem<=r)return (d-fromDay)+rem/r; rem-=r; d++; } return _SEAS_H-fromDay; };
+    const coverDemand=(fromDay,weeks)=>burnBetween(fromDay,fromDay+weeks*7);
+
     const thresh=src==='CHINA'?CHINA_WKS:IH_WKS;
 
     // Threshold qty: use OOS-locked forecast if available AND still applicable
     // Auto-unlock: if effective MA × threshold weeks exceeds the locked value, sales have recovered, drop the lock
     const lockedForecast=OOS_LOCKED_FORECAST[sku];
-    const computedThresh=effectiveWeeklyMa*thresh;
+    const computedThresh=coverDemand(0,thresh);  // was effectiveWeeklyMa*thresh — now provisions upcoming N.N spikes + season
     const useLocked=lockedForecast!==undefined&&lockedForecast>0&&computedThresh<lockedForecast;
     const threshQty=useLocked?lockedForecast:computedThresh;
     const orderTriggerQty=threshQty*ORDER_TRIGGER;
@@ -1050,7 +1071,7 @@ function computeStats(){
     //   • safetyQty — the extra QTY held on top of the weeks-of-cover target. Fast movers
     //     only. Slow / lumpy pcs movers stay lean (0): they top up to the plain 6-week
     //     target and just fire earlier, so they don't over-stock on chunky pieces.
-    const triggerFloorQty=Math.ceil(adjDaily*7*SAFETY_WKS);
+    const triggerFloorQty=Math.ceil(coverDemand(0,SAFETY_WKS));  // 1.5-wk floor, now spike/season-aware
     const safetyQty=isSlow?0:triggerFloorQty;
 
     let orderDecision=null;
@@ -1059,28 +1080,9 @@ function computeStats(){
       // We need to project stock forward through each pending arrival chronologically
       // not just lump everything into "effective stock today"
       
-      // ─── Per-SKU seasonal layer (neutral unless SEASONAL[sku] is set) ─
-      // Scales burn over time AND the order target to the period stock will actually
-      // sell in. With no factors, every helper reduces exactly to the flat adjDaily
-      // formula (validated). seasRatio short-circuits to 1 for unlisted SKUs, so the
-      // neutral path stays cheap.
-      const _t0=today();
-      const _sf=SEASONAL[sku];
-      const _baseF=_sf?(_sf[_t0.getMonth()+1]||1):1;
-      const seasRatio=off=>{ if(!_sf||!_baseF)return 1; const m=addDays(_t0,off).getMonth()+1; return (_sf[m]||1)/_baseF; };
-      const _SEAS_H=760, _cum=new Float64Array(_SEAS_H+2);
-      for(let _d=1;_d<=_SEAS_H+1;_d++)_cum[_d]=_cum[_d-1]+adjDaily*seasRatio(_d);
-      // Scheduled sale uplift: extra demand booked on each upcoming N.N anchor in (a,b].
-      // Baked into burnBetween so EVERY projection + order-target consumer provisions it.
-      // expectedUplift=0 (or empty calendar) → reduces to the plain baseline integral.
-      const upliftInWindow=(a,b)=>{ if(!expectedUplift)return 0; let n=0; for(const o of saleOffsetsGlobal){ if(o>a&&o<=b)n++; } return n*expectedUplift; };
-      const burnBetween=(a,b)=>{ if(b<=a)return 0; a=Math.max(0,a); b=Math.min(_SEAS_H,b);
-        const ia=Math.floor(a),ib=Math.floor(b); let s=_cum[ib]-_cum[ia];
-        s-=adjDaily*seasRatio(ia+1)*(a-ia); s+=adjDaily*seasRatio(ib+1)*(b-ib); return Math.max(0,s)+upliftInWindow(a,b); };
-      const daysToZero=(stk,fromDay)=>{ if(stk<=0)return 0; if(adjDaily<=0&&!expectedUplift)return Infinity;
-        let rem=stk,d=Math.floor(fromDay); while(d<_SEAS_H){ let r=adjDaily*seasRatio(d+1); if(saleSetGlobal.has(d+1))r+=expectedUplift;
-          if(r<=0){d++;continue;} if(rem<=r)return (d-fromDay)+rem/r; rem-=r; d++; } return _SEAS_H-fromDay; };
-      const coverDemand=(fromDay,weeks)=>burnBetween(fromDay,fromDay+weeks*7);
+      // Demand helpers (seasRatio / burnBetween / daysToZero / coverDemand / upliftInWindow)
+      // are now defined once at SKU scope above (hoisted 03 Jul 2026) and shared here, so
+      // threshold, floor, timing, quantity and in-house production all use one burn curve.
 
       // Sort pending arrivals by ETA (unshipped air = no ETA = treat as far future or skip from simulation)
       const arrivalsForSim=[
@@ -1163,37 +1165,27 @@ function computeStats(){
       const committedArrivalDays=arrivalsForSim
         .map(a=>daysBetween(today(),a.eta))
         .filter(d=>d>=0).sort((x,y)=>x-y);
-      const bridgedBy=(d,floor=0)=>{
-        for(const ad of committedArrivalDays){
-          if(ad>=d&&ad<=d+BRIDGE_GRACE_DAYS&&projectStock(ad)>floor)return ad;
-        }
-        return null;
-      };
-      for(let d=1;d<=365;){
-        const ps=projectStock(d);
-        if(dayWhenBelowThreshold===null&&ps<=threshQty)dayWhenBelowThreshold=d;
-        if(ps<=0){
-          const bridge=bridgedBy(d);
-          if(bridge!==null){d=bridge+1;continue;}  // transient gap closed by a committed arrival — not a sea deadline
-          dayWhenStockout=d;break;
-        }
-        d++;
-      }
+      // NEW (03 Jul 2026): shipment-by-shipment walk replaces the fixed grace-days bridge.
+      // The reorder point is the first day AFTER the last committed arrival that stock falls
+      // to the floor. No restock follows the last arrival, so projectStock declines
+      // monotonically past it → that crossing is the true, sustained reorder point. Transient
+      // dips before/between arrivals never trigger a NEW sea order (the committed pipeline
+      // covers them; the separate air-bridge below still flags any real OOS gap it can't close).
+      const lastArrivalDay=committedArrivalDays.length?committedArrivalDays[committedArrivalDays.length-1]:0;
+      for(let d=1;d<=365;d++){ if(projectStock(d)<=threshQty){dayWhenBelowThreshold=d;break;} }
+      for(let d=lastArrivalDay;d<=730;d++){ if(projectStock(d)<=0){dayWhenStockout=d;break;} }
       // Reorder trigger (ALL SKUs): pull the order-by earlier so the shipment lands while
       // ~2 weeks of cover (triggerFloorQty) still remains, rather than arriving at empty.
       // Slow movers get this timing too now — they just don't get the qty pad (safetyQty=0),
       // so they fire at the 2-week floor but still only top up to the lean 6-week target.
       // Skip floor dips that a committed arrival rescues within the bridge-grace window.
+      // Floor breathes: at each day d compare stock against the cover the NEXT 1.5 weeks
+      // will actually need FROM d (so the floor rises going into an N.N sale, relaxes after).
+      // Locked/OOS SKUs use their locked forecast scaled to the 1.5-wk fraction.
       let dayWhenBelowFloor=null;
-      if(triggerFloorQty>0){
-        for(let d=1;d<=365;d++){
-          const ps=projectStock(d);
-          if(ps<=triggerFloorQty){
-            const br=bridgedBy(d,triggerFloorQty);
-            if(br!==null){d=br;continue;}
-            dayWhenBelowFloor=d;break;
-          }
-        }
+      for(let d=lastArrivalDay;d<=730;d++){
+        const fq=useLocked?Math.ceil(lockedForecast*SAFETY_WKS/thresh):Math.ceil(coverDemand(d,SAFETY_WKS));
+        if(fq>0&&projectStock(d)<=fq){dayWhenBelowFloor=d;break;}
       }
       const orderDeadlineDay=dayWhenBelowFloor??dayWhenStockout??dayWhenBelowThreshold;
       const orderByDays=orderDeadlineDay!==null?orderDeadlineDay-leadDays:365;
