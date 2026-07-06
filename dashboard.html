@@ -399,7 +399,13 @@ let SEASONAL={};
 //   • SALE_UPLIFT_EVENTS — how many most-recent past sales to average the per-SKU uplift over.
 //   • SALE_UPLIFT_OVERRIDE — per-SKU manual uplift in units (TREATS_-prefixed keys); overrides auto-measure.
 // Set SALE_CALENDAR=[] to disable entirely — burn rate reverts to the raw 4-week MA (old behavior).
-let SALE_CALENDAR=[[1,1],[2,2],[3,3],[4,4],[5,5],[6,6],[7,7],[8,8],[9,9],[10,10],[11,11],[12,12]];
+// ALL-IN MONTHLY MODEL (03 Jul 2026): recurring monthly sale periods happen EVERY month, so
+// month-on-month they're just part of each month's demand — no de-spiking, no separate uplift
+// layer (that would double-count). SALE_CALENDAR is therefore empty: isSaleDay→false so nothing
+// is stripped from the base, and expectedUplift→0. Genuine ONE-OFF promos are excluded instead
+// via CAMPAIGN_ONETIME below. The burn rate + trajectory are computed month-on-month (see
+// monthlyRates/trajFromSeries), which blends retail + wholesale + the recurring sale into one rate.
+let SALE_CALENDAR=[];
 let SALE_WINDOW={pre:2,post:3};
 let SALE_UPLIFT_EVENTS=3;
 // One-time / special campaigns you'll flag manually. EXCLUDED from the base burn rate so
@@ -409,6 +415,59 @@ let CAMPAIGN_ONETIME=[];
 // Optional wholesale split for the monthly readout: g/pack at/above which a line reads as
 // wholesale and is shown separately from the retail curve. e.g. {TREATS_CHICK_006:400}. Empty = off.
 const WHOLESALE_PACK={};
+// Live inventory ledger only tracks sales from the May stocktake onward, so live months
+// begin in June. Feb–May are seeded here as DEAD trajectory-only values (buffered, computed
+// with the same day-counting as live) — they feed monthlyRates()/trajectory ONLY and never
+// touch current-stock math. Regenerate if you reload historical sales.
+const LIVE_FROM='2026-06';
+const HISTORICAL_MONTHLY={
+  TREATS_BEEF_001:{'2026-02':927.3,'2026-03':694.8,'2026-04':654.1,'2026-05':761.9},
+  TREATS_BEEF_002:{'2026-02':165.8,'2026-03':157.2,'2026-04':138.3,'2026-05':205.8},
+  TREATS_BEEF_003:{'2026-02':68.9,'2026-03':80.7,'2026-04':92.3,'2026-05':80.3},
+  TREATS_BEEF_004_Large:{'2026-02':0.2,'2026-03':0.2,'2026-04':0.5,'2026-05':0.1},
+  TREATS_BEEF_004_Small:{'2026-02':0.3,'2026-03':0.4,'2026-04':0.5,'2026-05':0.4},
+  TREATS_BEEF_005:{'2026-04':5.8,'2026-05':2.5},
+  TREATS_CHICK_001:{'2026-02':735.8,'2026-03':1118.6,'2026-04':609.9,'2026-05':656.8},
+  TREATS_CHICK_002:{'2026-04':95.4,'2026-05':115.2},
+  TREATS_CHICK_003:{'2026-04':178.1,'2026-05':294.4},
+  TREATS_CHICK_004:{'2026-04':19.0,'2026-05':99.9},
+  TREATS_CHICK_005:{'2026-04':318.0,'2026-05':54.3},
+  TREATS_CHICK_006:{'2026-04':325.1,'2026-05':266.5},
+  TREATS_CROC_001:{'2026-02':630.9,'2026-03':622.8,'2026-04':510.8,'2026-05':596.9},
+  TREATS_CROC_002:{'2026-04':7.0,'2026-05':2.2},
+  TREATS_CROC_003:{'2026-04':3.0,'2026-05':1.4},
+  TREATS_DUCK_001:{'2026-02':1616.0,'2026-03':1354.2,'2026-04':1431.5,'2026-05':1518.5},
+  TREATS_DUCK_002:{'2026-02':1.3,'2026-03':1.1,'2026-04':0.5,'2026-05':0.7},
+  TREATS_DUCK_003:{'2026-04':256.0,'2026-05':211.5},
+  TREATS_DUCK_004:{'2026-04':44.4,'2026-05':195.0},
+  TREATS_DUCK_005:{'2026-04':417.1,'2026-05':169.1},
+  TREATS_DUCK_006:{'2026-04':173.7,'2026-05':170.0},
+  TREATS_FRVG_001:{'2026-02':54.1,'2026-03':51.0,'2026-04':79.5,'2026-05':81.1},
+  TREATS_FRVG_002:{'2026-02':66.4,'2026-03':46.4,'2026-04':90.9,'2026-05':85.1},
+  TREATS_FRVG_003:{'2026-02':180.2,'2026-03':163.6,'2026-04':225.5,'2026-05':235.5},
+  TREATS_FRVG_004:{'2026-02':90.2,'2026-03':54.4,'2026-04':76.1,'2026-05':89.8},
+  TREATS_FRVG_005:{'2026-02':30.8,'2026-03':25.2,'2026-04':39.2,'2026-05':95.9},
+  TREATS_FRVG_006:{'2026-04':431.0,'2026-05':135.0},
+  TREATS_KANG_001:{'2026-02':1224.6,'2026-03':1283.7,'2026-04':1243.4,'2026-05':1398.0},
+  TREATS_OSTR_001:{'2026-02':0.3,'2026-03':0.2,'2026-04':0.5,'2026-05':0.5},
+  TREATS_PORK_001:{'2026-02':249.1,'2026-03':143.9,'2026-04':195.2,'2026-05':240.7},
+  TREATS_PORK_002:{'2026-02':2458.4,'2026-03':1640.6,'2026-04':1942.0,'2026-05':2055.3},
+  TREATS_PORK_004:{'2026-04':243.3,'2026-05':199.8},
+  TREATS_PORK_005_Jumbo:{'2026-04':1.4,'2026-05':0.8},
+  TREATS_PORK_005_Medium:{'2026-04':0.5,'2026-05':0.4},
+  TREATS_RABB_001:{'2026-02':259.6,'2026-03':164.6,'2026-04':237.2,'2026-05':241.1},
+  TREATS_RABB_002:{'2026-02':2.3,'2026-03':0.5,'2026-04':1.0,'2026-05':1.7},
+  TREATS_SEAF_001:{'2026-02':31.1,'2026-03':22.9,'2026-04':42.2,'2026-05':56.3},
+  TREATS_SEAF_002:{'2026-02':37.3,'2026-03':22.1,'2026-04':38.8,'2026-05':111.5},
+  TREATS_SEAF_003:{'2026-02':161.0,'2026-03':142.7,'2026-04':166.3,'2026-05':227.5},
+  TREATS_SEAF_004:{'2026-02':95.5,'2026-03':43.5,'2026-04':117.7,'2026-05':181.9},
+  TREATS_SEAF_005:{'2026-02':143.8,'2026-03':73.7,'2026-04':238.5,'2026-05':223.8},
+  TREATS_SEAF_006:{'2026-02':57.0,'2026-03':7.2,'2026-04':62.0,'2026-05':60.8},
+  TREATS_SEAF_007:{'2026-02':0.9,'2026-03':0.8,'2026-04':0.3,'2026-05':0.8},
+  TREATS_SEAF_008:{'2026-04':124.4,'2026-05':203.4},
+  TREATS_SEAF_009:{'2026-04':111.8,'2026-05':74.6},
+  TREATS_TURK_001:{'2026-02':518.2,'2026-03':462.8,'2026-04':365.7,'2026-05':427.5}
+};
 let SALE_UPLIFT_OVERRIDE={};
 const SEA_ONLY=new Set(['TREATS_FRVG_006']);
 const EXTRA_LEAD=new Set(['TREATS_FRVG_001','TREATS_FRVG_003','TREATS_FRVG_004','TREATS_OSTR_001','TREATS_SEAF_007','TREATS_BEEF_003']);
@@ -864,6 +923,61 @@ function renderLogPanels(){
   }
 }
 
+// ─── Month-on-month demand model (03 Jul 2026) ──────────────────────────────
+// Per-SKU monthly g/day from launch onward. Denominator = every non-Sunday, in-stock
+// (non-OOS), non-one-off-campaign day in the month within the SKU's active range — so
+// slow days count and a lumpy day can't inflate the rate. ALL sales are included
+// (retail + wholesale + recurring monthly sale), matching the all-in philosophy.
+function monthlyRates(dayData,sku){
+  const t=today(); const out=[];
+  const hist=HISTORICAL_MONTHLY[sku]||{};
+  Object.keys(hist).sort().forEach(ym=>{ if(ym<LIVE_FROM) out.push({ym,perDay:hist[ym],days:null,g:null,complete:true,hist:true}); });
+  const keys=Object.keys(dayData).sort();
+  if(keys.length){
+    const start=new Date(keys[0]); let y=start.getFullYear(), mo=start.getMonth();
+    while(y<t.getFullYear()||(y===t.getFullYear()&&mo<=t.getMonth())){
+      const ym=`${y}-${String(mo+1).padStart(2,'0')}`;
+      if(ym>=LIVE_FROM){
+        const first=new Date(y,mo,1), last=new Date(y,mo+1,0); let g=0,days=0;
+        for(let d=new Date(first); d<=last; d.setDate(d.getDate()+1)){
+          if(d<start||d>t)continue; if(d.getDay()===0)continue;
+          if(isOosDay(sku,d)||isCampaignDay(d,sku))continue;
+          g+=dayData[dKey(d)]||0; days++;
+        }
+        out.push({ym, perDay:days>0?g/days:0, days, g, complete:last<t});
+      }
+      mo++; if(mo>11){mo=0;y++;}
+    }
+  }
+  out.sort((a,b)=>a.ym<b.ym?-1:1);
+  return out;
+}
+// Trend across complete months: rising/falling gate on month-over-month deltas, then a
+// linear-regression slope as % of the mean, capped ±30%. <2 complete months → no boost
+// (protects newly-launched SKUs from a volatile 1–2 point trend).
+function trajFromSeries(vals){
+  const n=vals.length;
+  if(n<2)return {pct:0,pattern:'insufficient',slope:0,rawPct:0};
+  const deltas=[]; for(let i=1;i<n;i++)deltas.push(vals[i]-vals[i-1]);
+  const sgn=v=>v>0?1:v<0?-1:0;
+  const pos=deltas.filter(d=>d>0).length, neg=deltas.filter(d=>d<0).length;
+  const latest=sgn(deltas[deltas.length-1]);
+  const need=Math.ceil(deltas.length/2);
+  let pattern;
+  if(vals.every(v=>v===0))pattern='no-sales';
+  else if(pos>=need&&latest>0)pattern='rising';
+  else if(neg>=need&&latest<0)pattern='falling';
+  else pattern='choppy';
+  if(pattern!=='rising'&&pattern!=='falling')return {pct:0,pattern,slope:0,rawPct:0};
+  const meanX=(n-1)/2, meanY=vals.reduce((a,b)=>a+b,0)/n;
+  let num=0,den=0; for(let i=0;i<n;i++){num+=(i-meanX)*(vals[i]-meanY);den+=(i-meanX)**2;}
+  const slope=den>0?num/den:0;
+  const rawPct=meanY>0?(slope/meanY)*100:0;
+  if(pattern==='rising'&&rawPct<=0)return {pct:0,pattern:'choppy',slope,rawPct};
+  if(pattern==='falling'&&rawPct>=0)return {pct:0,pattern:'choppy',slope,rawPct};
+  return {pct:Math.max(-30,Math.min(30,rawPct)),pattern,slope,rawPct};
+}
+
 function computeStats(){
   skuStats={};
   const wks=get4Weeks();
@@ -929,30 +1043,20 @@ function computeStats(){
       return {pct,pattern,slope,rawPct};
     }
 
-    // Compute auto MA from sales data (last 4 completed weeks)
-    let autoMa,traj,trajPattern,trajRawPct,oosActive=false;
-    if(isOos){
-      const iw=getInStockWeeks(sku,4);
-      if(iw.length>0){
-        autoMa=iw.reduce((a,b)=>a+b,0)/iw.length;
-        oosActive=true;
-        // For OOS items, use in-stock weeks for trajectory if we have 4 of them;
-        // otherwise fall back to no trajectory boost (data too sparse to trust)
-        if(iw.length>=4){
-          const tj=computeTrajectory(iw.slice(-4));
-          traj=tj.pct;trajPattern=tj.pattern;trajRawPct=tj.rawPct||0;
-        } else {
-          traj=0;trajPattern='oos-sparse';trajRawPct=0;
-        }
-      } else {
-        autoMa=wkBase.reduce((a,b)=>a+b,0)/4;
-        traj=0;trajPattern='no-sales';trajRawPct=0;
-      }
+    // Compute base rate + trajectory MONTH-ON-MONTH (all-in). Base = latest COMPLETE
+    // month's g/day; trajectory = MoM trend over up to the last 4 complete months.
+    let autoMa,traj,trajPattern,trajRawPct,oosActive=isOos;
+    const monthSeries=monthlyRates(dayData,sku);
+    const completeM=monthSeries.filter(m=>m.complete);
+    const baseDaily = completeM.length ? completeM[completeM.length-1].perDay
+                    : (monthSeries.length ? monthSeries[monthSeries.length-1].perDay : 0);
+    if(completeM.length>=2){
+      const tj=trajFromSeries(completeM.slice(-4).map(m=>m.perDay));
+      traj=tj.pct; trajPattern=tj.pattern; trajRawPct=tj.rawPct||0;
     } else {
-      autoMa=wkBase.reduce((a,b)=>a+b,0)/4;
-      const tj=computeTrajectory(wkBase);
-      traj=tj.pct;trajPattern=tj.pattern;trajRawPct=tj.rawPct||0;
+      traj=0; trajPattern=completeM.length?'new-sku':(monthSeries.length?'launch-partial':'no-sales'); trajRawPct=0;
     }
+    autoMa=baseDaily*7;
 
     // Optional per-SKU manual override (only used if explicitly set via Log Actions)
     const manualMa=MANUAL_WEEKLY_MA[sku];
@@ -1384,7 +1488,7 @@ function computeStats(){
     const sessionsTopup=src==='INHOUSE'&&DEHY[sku]?sessionsToTopupFromZero(skuStub):0;
     const trigWks=src==='INHOUSE'&&DEHY[sku]?ihTriggerWeeks(skuStub):IH_HEALTHY_WKS;
     const ihHealthy=src==='INHOUSE'&&weeksOnHand>=trigWks;
-    skuStats[sku]={sku,src,isSlow,safetyQty,wkTotals,ma,autoMa,manualMa:useManual?manualMa:null,useManual,useLocked,lockedForecast:useLocked?lockedForecast:null,daily,traj,trajPattern,trajRawPct,burnSource,adjDaily,thresh,threshQty,orderTriggerQty,currentStock,effectiveStock,weeksOnHand,daysTillStockout,prodNeeded,soldSince,confIn,oosActive,seaOnly,orderDecision,pendSeaOrders,pendAirOrders,ihHealthy,sessionsTopup,trigWks,buffer:BUFFER[sku]||0,expectedUplift,upliftEventsUsed,despiked,wkBase};
+    skuStats[sku]={sku,src,isSlow,safetyQty,wkTotals,ma,autoMa,manualMa:useManual?manualMa:null,useManual,useLocked,lockedForecast:useLocked?lockedForecast:null,daily,traj,trajPattern,trajRawPct,burnSource,adjDaily,thresh,threshQty,orderTriggerQty,currentStock,effectiveStock,weeksOnHand,daysTillStockout,prodNeeded,soldSince,confIn,oosActive,seaOnly,orderDecision,pendSeaOrders,pendAirOrders,ihHealthy,sessionsTopup,trigWks,buffer:BUFFER[sku]||0,expectedUplift,upliftEventsUsed,despiked,wkBase,monthSeries};
   });
   updateCards();buildAlerts();
 }
@@ -3228,21 +3332,18 @@ function renderProduction(){
 // used by both the China Orders table (since v11) and the Inventory tab.
 // Returns an HTML string (empty if no tag applies, e.g. manual override).
 function buildTrajTag(s){
+  const uomT=UOM[s.sku]||'g';
+  const mseries=(s.monthSeries||[]).slice(-5).map(m=>`${m.ym.slice(5)} ${fmt(Math.round(m.perDay))}${m.complete?'':'*'}`).join(' → ');
   if(s.trajPattern==='rising'||s.trajPattern==='falling'){
-    const uomT=UOM[s.sku]||'g';
-    const weeks=(s.wkTotals||[]).map(v=>fmt(Math.round(v))+uomT).join(' → ');
     const arrow=s.trajPattern==='rising'?'↑':'↓';
     const color=s.trajPattern==='rising'?'var(--orange)':'var(--text3)';
     const sign=s.traj>=0?'+':'';
     const capped=Math.abs(s.trajRawPct)>30?` (capped from ${Math.round(s.trajRawPct)}%)`:'';
-    const tip=`trajectory: ${s.trajPattern}${capped}\n4-week sales: ${weeks}\nbase MA: ${fmt(Math.round(s.autoMa/7))}${uomT}/d → adjusted: ${fmt(Math.round(s.adjDaily))}${uomT}/d (${sign}${Math.round(s.traj)}%)`;
+    const tip=`trajectory (month-on-month): ${s.trajPattern}${capped}\nmonthly g/d: ${mseries}  (* = partial month)\nbase (last full month): ${fmt(Math.round(s.autoMa/7))}${uomT}/d → adjusted: ${fmt(Math.round(s.adjDaily))}${uomT}/d (${sign}${Math.round(s.traj)}%)`;
     return `<span title="${tip}" style="font-size:9px;color:${color};border:1px solid ${color};padding:1px 4px;border-radius:2px;margin-left:4px;cursor:help">${arrow}${sign}${Math.round(s.traj)}%</span>`;
-  } else if(s.trajPattern==='choppy'&&s.wkTotals&&s.wkTotals.length===4){
-    const uomT=UOM[s.sku]||'g';
-    const weeks=s.wkTotals.map(v=>fmt(Math.round(v))+uomT).join(' → ');
-    return `<span title="trajectory not applied (choppy)\n4-week sales: ${weeks}\nbase MA only: ${fmt(Math.round(s.adjDaily))}${uomT}/d" style="font-size:9px;color:var(--text3);opacity:.55;margin-left:4px;cursor:help">≈</span>`;
   }
-  return '';
+  const lbl=s.trajPattern==='new-sku'?'new SKU':s.trajPattern==='launch-partial'?'launch month':'flat/choppy';
+  return `<span title="trajectory not applied (${lbl})\nmonthly g/d: ${mseries||'—'}  (* = partial month)\nbase: ${fmt(Math.round(s.adjDaily))}${uomT}/d" style="font-size:9px;color:var(--text3);opacity:.55;margin-left:4px;cursor:help">≈</span>`;
 }
 
 function renderInventory(){
