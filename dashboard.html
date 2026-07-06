@@ -106,7 +106,7 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--bg2)}
 
 <div class="hdr">
   <div class="hdr-left">
-    <h1>treats <em>ops v1</em></h1>
+    <h1>treats <em>ops</em></h1>
     <div class="hdr-sub" id="hdrSub">initialising...</div>
   </div>
   <div class="sync-row">
@@ -402,6 +402,13 @@ let SEASONAL={};
 let SALE_CALENDAR=[[1,1],[2,2],[3,3],[4,4],[5,5],[6,6],[7,7],[8,8],[9,9],[10,10],[11,11],[12,12]];
 let SALE_WINDOW={pre:2,post:3};
 let SALE_UPLIFT_EVENTS=3;
+// One-time / special campaigns you'll flag manually. EXCLUDED from the base burn rate so
+// they don't inflate it, and NOT provisioned as recurring uplift (that's SALE_CALENDAR's job).
+// Format: 'YYYY-MM-DD' (applies to all SKUs) or 'TREATS_SKU|YYYY-MM-DD' (one SKU). Empty = no-op.
+let CAMPAIGN_ONETIME=[];
+// Optional wholesale split for the monthly readout: g/pack at/above which a line reads as
+// wholesale and is shown separately from the retail curve. e.g. {TREATS_CHICK_006:400}. Empty = off.
+const WHOLESALE_PACK={};
 let SALE_UPLIFT_OVERRIDE={};
 const SEA_ONLY=new Set(['TREATS_FRVG_006']);
 const EXTRA_LEAD=new Set(['TREATS_FRVG_001','TREATS_FRVG_003','TREATS_FRVG_004','TREATS_OSTR_001','TREATS_SEAF_007','TREATS_BEEF_003']);
@@ -613,6 +620,9 @@ function refreshDashboard(){const{from,to}=getDateRangeFromPicker();init(from,to
 // A calendar day is "sale-affected" if it falls within SALE_WINDOW of any N.N date.
 function isSaleDay(d){ if(!SALE_CALENDAR.length)return false; const y=d.getFullYear();
   for(let yy=y-1;yy<=y+1;yy++){ for(const [mm,dd] of SALE_CALENDAR){ const diff=Math.round((d-new Date(yy,mm-1,dd))/86400000); if(diff>=-SALE_WINDOW.pre&&diff<=SALE_WINDOW.post)return true; } } return false; }
+// A one-time/special campaign day (user-flagged) — excluded from the base rate, not provisioned.
+function isCampaignDay(d,sku){ if(!CAMPAIGN_ONETIME.length)return false; const k=dKey(d);
+  for(const c of CAMPAIGN_ONETIME){ if(c===k)return true; if(sku&&c===sku+'|'+k)return true; } return false; }
 // Day-offsets (from today) of upcoming sale ANCHOR dates within horizonDays (each counted once).
 function saleOffsetsAhead(horizonDays){ if(!SALE_CALENDAR.length)return []; const t0=today(),offs=[];
   for(let dd=1;dd<=horizonDays;dd++){ const d=addDays(t0,dd),m=d.getMonth()+1,day=d.getDate(); if(SALE_CALENDAR.some(([mm,dy])=>mm===m&&dy===day))offs.push(dd); } return offs; }
@@ -868,7 +878,7 @@ function computeStats(){
     // De-spiked weekly totals: exclude sale-window days, normalize to a 6-day selling week.
     // Drives the burn rate + trajectory so a monthly promo can't inflate the ongoing rate.
     // With SALE_CALENDAR=[] this equals wkTotals exactly (isSaleDay→false, n→6).
-    const wkBase=wks.map(wk=>{let tot=0,n=0;const cur=new Date(wk.mon);while(cur<=wk.sun){if(cur.getDay()!==0){if(!isSaleDay(cur)){tot+=dayData[dKey(cur)]||0;n++;}}cur.setDate(cur.getDate()+1);}return n>0?(tot/n)*6:0;});
+    const wkBase=wks.map(wk=>{let tot=0,n=0;const cur=new Date(wk.mon);while(cur<=wk.sun){if(cur.getDay()!==0){if(!isSaleDay(cur)&&!isCampaignDay(cur,sku)){tot+=dayData[dKey(cur)]||0;n++;}}cur.setDate(cur.getDate()+1);}return n>0?(tot/n)*6:0;});
     const isOos=OOS_SKUS.has(sku)||hasRecentOos(sku);
 
     // ── Trajectory v2: lenient monotonicity gate + linear regression slope ──
@@ -3301,6 +3311,7 @@ function runVerify(){
     html+=`<span style="color:var(--text3)">→ likely cause: duplicate sales rows being counted twice</span>`;
   }
   // Show breakdown
+  html+=monthlyCurveHtml(sku,u);
   html+=`<br><br><span style="color:var(--text3)">─ entries dashboard sees ─</span><br>`;
   const dayData=rawSalesByDay[sku]||{};
   const allDays=Object.keys(dayData).filter(d=>new Date(d)>CLOSING_DATE).sort();
@@ -3318,6 +3329,29 @@ function runVerify(){
   }
   html+=`</div>`;
   r.innerHTML=html;
+}
+
+// Per-SKU month-on-month launch curve from line-level history (retail vs wholesale split
+// when WHOLESALE_PACK[sku] is set). g/day = buffered total ÷ selling days; MoM% on g/day.
+function monthlyCurveHtml(sku,u){
+  const dd=rawSalesByDay[sku]||{}; const days=Object.keys(dd).sort();
+  if(!days.length)return '';
+  const wp=WHOLESALE_PACK[sku]||null; const months={};
+  days.forEach(d=>{ const mk=d.slice(0,7);
+    const m=months[mk]||(months[mk]={total:0,retail:0,bulk:0,days:new Set(),big:{d:'',g:0}});
+    let dayG=0;
+    (dd[d]||[]).forEach(e=>{ const g=e.buffered||0; m.total+=g; dayG+=g; if(wp&&e.g>=wp)m.bulk+=g; else m.retail+=g; });
+    if(dayG>0)m.days.add(d); if(dayG>m.big.g)m.big={d,g:dayG};
+  });
+  const mkeys=Object.keys(months).sort(); let prev=null,rows='';
+  mkeys.forEach(mk=>{ const m=months[mk],nd=m.days.size,perDay=nd?m.total/nd:0;
+    const mom=(prev&&prev>0)?((perDay/prev-1)*100):null;
+    const momStr=mom===null?'—':`<span style="color:${mom>=0?'var(--orange)':'var(--text3)'}">${mom>=0?'+':''}${Math.round(mom)}%</span>`;
+    const split=wp?` <span style="color:var(--text3)">(retail ${fmt(Math.round(nd?m.retail/nd:0))} / whlsl ${fmt(Math.round(nd?m.bulk/nd:0))})</span>`:'';
+    rows+=`  ${mk}: ${fmt(Math.round(m.total))}${u} / ${nd}d = <strong>${fmt(Math.round(perDay))}${u}/d</strong> ${momStr}${split} · biggest ${m.big.d.slice(5)} ${fmt(Math.round(m.big.g))}${u}<br>`;
+    prev=perDay;
+  });
+  return `<br><span style="color:var(--text3)">─ month-on-month curve (g/day · MoM% on g/day${wp?` · wholesale = packs ≥${wp}${u}`:''}) ─</span><br>${rows}`;
 }
 
 function toggleDebug(){
