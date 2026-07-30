@@ -405,8 +405,13 @@ let SEASONAL={};
 // is stripped from the base, and expectedUplift→0. Genuine ONE-OFF promos are excluded instead
 // via CAMPAIGN_ONETIME below. The burn rate + trajectory are computed month-on-month (see
 // monthlyRates/trajFromSeries), which blends retail + wholesale + the recurring sale into one rate.
-let SALE_CALENDAR=[];
-let SALE_WINDOW={pre:2,post:3};
+// RE-ENABLED 29 Jul 2026 (adaptive-recency model). The recency base uses a short trailing
+// window, so a single N.N sale week would badly inflate a dense seller's rate if left in.
+// These dates are therefore STRIPPED from the base (isSaleDay→true) and instead provisioned
+// for the coverage window via expectedUplift — "spike vs spike", not baked into the ongoing
+// rate. Add festival dates here too (e.g. [1,29] CNY eve) as you learn their per-SKU uplift.
+let SALE_CALENDAR=[[1,1],[2,2],[3,3],[4,4],[5,5],[6,6],[7,7],[8,8],[9,9],[10,10],[11,11],[12,12]];
+let SALE_WINDOW={pre:1,post:2};   // strip the N.N date + Monday-batch smear (tighter than the old 2/3)
 let SALE_UPLIFT_EVENTS=3;
 // One-time / special campaigns you'll flag manually. EXCLUDED from the base burn rate so
 // they don't inflate it, and NOT provisioned as recurring uplift (that's SALE_CALENDAR's job).
@@ -978,6 +983,88 @@ function trajFromSeries(vals){
   return {pct:Math.max(-30,Math.min(30,rawPct)),pattern,slope,rawPct};
 }
 
+// ─── Adaptive recency burn rate (29 Jul 2026, week-bucketed trimmed-mean) ────
+// Replaces the "last COMPLETE calendar month" base, which lagged 4–6 weeks and
+// mis-tracked recent turns: it over-ordered a plateauing SKU (used last month's
+// peak) and under-ordered a rebounding one (used last month's trough). Instead we
+// average the most recent COMPLETE weeks (Mon–Sat), each as a per-in-stock-day rate,
+// with three robustness features tuned against real Omakase data:
+//   • ADAPTIVE COUNT by sales density — dense daily sellers use fewer weeks
+//     (responsive, catches plateaus); sparse/lumpy sellers use more (stable, a
+//     no-sale stretch or one lumpy order can't crater/spike the rate).
+//   • COMPLETE WEEKS ONLY — the in-progress partial week is excluded. A 2–3 day
+//     partial week with one sale was dragging lumpy dense sellers' rates to false
+//     lows (chicken-breast-cubes read 155 vs a true ~280); dropping it fixes that.
+//   • TRIMMED MEAN — drop the single highest AND lowest week (when ≥4 weeks) so one
+//     anomalous week (a wholesale dump, a quiet week) can't swing the base; a
+//     SUSTAINED move still comes through because only one extreme week is trimmed.
+// Spikes (N.N/festival) are STRIPPED here (apples-to-apples "normal week" rate) and
+// provisioned separately for the coverage window via expectedUplift (SALE_CALENDAR).
+const BURN_WK_DENSE=6;       // dense daily sellers: 6 complete weeks (trims to 4)
+const BURN_WK_MEDIUM=7;      // medium
+const BURN_WK_SPARSE=9;      // sparse/lumpy: wider for stability
+const DENSITY_LOOKBACK=48;   // in-stock weekdays scanned to classify density
+const DENSE_CUTOFF=0.6, SPARSE_CUTOFF=0.3;
+
+const _mean=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
+function _mondayOf(d){ return addDays(d,-(((d.getDay()+6)%7))); }   // ISO Monday
+
+function adaptiveBurnRate(sku,dayData){
+  const t=today();
+  const keys=Object.keys(dayData).sort();
+  const firstDay=keys.length?new Date(keys[0]):t;   // don't walk into pre-data zeros
+  // 1) classify density: fraction of in-stock weekdays (spikes included — a sale is a sale) with a sale
+  let scanned=0,soldDays=0,d=new Date(t);
+  while(scanned<DENSITY_LOOKBACK){
+    if(d<firstDay)break;
+    if(d.getDay()!==0 && !isOosDay(sku,d)){ scanned++; if((dayData[dKey(d)]||0)>0)soldDays++; }
+    d=addDays(d,-1);
+  }
+  const density=scanned>0?soldDays/scanned:0;
+  const cls=density>=DENSE_CUTOFF?'dense':density>=SPARSE_CUTOFF?'medium':'sparse';
+  const nWeeks=cls==='dense'?BURN_WK_DENSE:cls==='medium'?BURN_WK_MEDIUM:BURN_WK_SPARSE;
+  // 2) collect trailing COMPLETE weeks (skip the in-progress partial week). Each week's
+  //    rate = non-spike, in-stock g / non-spike, in-stock weekday count. Skip empty weeks.
+  const weeks=[];                       // newest-first
+  let wk=addDays(_mondayOf(t),-7);      // last fully-complete week
+  let guard=0;
+  while(weeks.length<nWeeks && guard++<60){
+    if(addDays(wk,5)<firstDay)break;    // whole week predates data
+    let g=0,dd=0;
+    for(let i=0;i<6;i++){ const day=addDays(wk,i);
+      if(day>t||isOosDay(sku,day)||isSaleDay(day)||isCampaignDay(day,sku))continue;
+      g+=dayData[dKey(day)]||0; dd++; }
+    if(dd>0)weeks.push(g/dd);
+    wk=addDays(wk,-7);
+  }
+  if(!weeks.length)return {base:0,cls,density,win:nWeeks,used:0,latestWeek:0,recentThird:0,olderRest:0};
+  // 3) TRIMMED mean — drop the single hi & lo week when we have ≥4 (resists one anomalous week)
+  const srt=[...weeks].sort((a,b)=>a-b);
+  const trimmed=srt.length>=4?srt.slice(1,-1):srt;
+  const base=_mean(trimmed);
+  // 4) week halves for the confirmation gate (weeks[] is newest-first)
+  const half=Math.max(1,Math.floor(weeks.length/2));
+  const recentHalf=_mean(weeks.slice(0,half));
+  const olderArr=weeks.slice(half);
+  return {base,cls,density,win:nWeeks,used:weeks.length,
+          latestWeek:weeks[0],recentThird:recentHalf,olderRest:olderArr.length?_mean(olderArr):recentHalf};
+}
+
+// Confirmation-gated trajectory: only lean UP when BOTH the recent half AND the very
+// latest week sit above the older/baseline rate; only report DOWN when both sit below.
+// This kills the stale "still rising" boost that over-ordered salmon after it plateaued
+// (its latest week had already fallen below its own average). The downward case is
+// informational only — adjDaily keeps base as a floor (never cut below on a dip), so a
+// temporary dip can't trigger a stockout.
+function gatedTraj(br){
+  const {base,recentThird,olderRest,latestWeek}=br;
+  if(base<=0||olderRest<=0)return {pct:0,pattern:'flat',rawPct:0};
+  const rawPct=Math.max(-30,Math.min(30,(recentThird/olderRest-1)*100));
+  if(rawPct>0.5)return latestWeek>=base?{pct:rawPct,pattern:'rising',rawPct}:{pct:0,pattern:'rising-unconfirmed',rawPct};
+  if(rawPct<-0.5)return latestWeek<=base?{pct:rawPct,pattern:'falling',rawPct}:{pct:0,pattern:'falling-unconfirmed',rawPct};
+  return {pct:0,pattern:'flat',rawPct};
+}
+
 function computeStats(){
   skuStats={};
   const wks=get4Weeks();
@@ -1043,40 +1130,37 @@ function computeStats(){
       return {pct,pattern,slope,rawPct};
     }
 
-    // Compute base rate + trajectory MONTH-ON-MONTH (all-in). Base = latest COMPLETE
-    // month's g/day; trajectory = MoM trend over up to the last 4 complete months.
+    // Compute base rate + trajectory — ADAPTIVE RECENCY (29 Jul 2026). Base = a trailing
+    // window of recent in-stock, non-spike weekdays (window width adapts to sales density),
+    // recency-weighted toward newest days. Trajectory is confirmation-gated. monthSeries is
+    // still computed (below) but is now DISPLAY-ONLY (the per-SKU monthly curve panel).
     let autoMa,traj,trajPattern,trajRawPct,oosActive=isOos;
-    const monthSeries=monthlyRates(dayData,sku);
-    const completeM=monthSeries.filter(m=>m.complete);
-    const baseDaily = completeM.length ? completeM[completeM.length-1].perDay
-                    : (monthSeries.length ? monthSeries[monthSeries.length-1].perDay : 0);
-    if(completeM.length>=2){
-      const tj=trajFromSeries(completeM.slice(-4).map(m=>m.perDay));
-      traj=tj.pct; trajPattern=tj.pattern; trajRawPct=tj.rawPct||0;
-    } else {
-      traj=0; trajPattern=completeM.length?'new-sku':(monthSeries.length?'launch-partial':'no-sales'); trajRawPct=0;
-    }
+    const monthSeries=monthlyRates(dayData,sku);   // display only
+    const br=adaptiveBurnRate(sku,dayData);
+    const baseDaily=br.base;
+    const tj=gatedTraj(br);
+    traj=tj.pct; trajPattern=tj.pattern; trajRawPct=tj.rawPct||0;
     autoMa=baseDaily*7;
 
     // Optional per-SKU manual override (only used if explicitly set via Log Actions)
     const manualMa=MANUAL_WEEKLY_MA[sku];
     const useManual=manualMa!==undefined&&manualMa>0;
 
-    // BURN RATE: take MAX of straight auto MA, trajectory-adjusted, and manual override (if any)
-    // Rationale: never under-order due to a dip; if trajectory shows consistent growth, use that;
-    // if user has locked a manual MA, respect it as a floor.
-    // Note: trajectory is only nonzero when pattern is 'rising' or 'falling' (see computeTrajectory).
+    // BURN RATE: max of recency base, confirmed-upward-trajectory-adjusted, and manual.
+    // The gate returns pct>0 only when a rise is confirmed by the latest week, so a stale
+    // "still rising" reading can't inflate the order (the salmon fix). A downward reading
+    // is informational — we keep base as a floor via Math.max (never cut below on a dip),
+    // so a temporary dip can't drive a stockout.
     const autoDaily=autoMa/7;
-    const trajAdjDaily=autoDaily*(1+traj/100);
+    const trajAdjDaily=autoDaily*(1+Math.max(0,traj)/100);
     const manualDaily=useManual?manualMa/7:0;
     const adjDaily=Math.max(0.01,autoDaily,trajAdjDaily,manualDaily);
 
     // Which input "won" the MAX — used to label the burn rate inline
     let burnSource;
     if(manualDaily>=trajAdjDaily&&manualDaily>=autoDaily&&useManual)burnSource='manual';
-    else if(trajAdjDaily>autoDaily&&traj!==0)burnSource='trajectory';
-    else if(autoDaily>trajAdjDaily&&traj!==0)burnSource='auto-floor';   // trajectory was negative
-    else burnSource='auto';
+    else if(trajAdjDaily>autoDaily&&traj>0)burnSource='trajectory';
+    else burnSource='recency-'+br.cls;
 
     // For "threshold target" calculation: use the same burn rate as displayed/used elsewhere.
     const ma=Math.max(autoMa,useManual?manualMa:0);
@@ -1185,8 +1269,14 @@ function computeStats(){
     //   • safetyQty — the extra QTY held on top of the weeks-of-cover target. Fast movers
     //     only. Slow / lumpy pcs movers stay lean (0): they top up to the plain 6-week
     //     target and just fire earlier, so they don't over-stock on chunky pieces.
-    const triggerFloorQty=Math.ceil(coverDemand(0,SAFETY_WKS));  // 1.5-wk floor, now spike/season-aware
-    const safetyQty=isSlow?0:triggerFloorQty;
+    const triggerFloorQty=Math.ceil(coverDemand(0,SAFETY_WKS));  // 1.5-wk floor, spike/season-aware — used for reorder TIMING (a comparison, not additive)
+    // safetyQty is ADDED to the 6-week cover to form the order target. The 6-week cover
+    // already provisions every N.N sale in its span (upliftInWindow), and the 1.5-wk safety
+    // window overlaps the first 1.5 weeks of that span — so pulling uplift into safetyQty too
+    // would provision those early-window sales TWICE (29 Jul 2026 fix). safetyQty is therefore
+    // pure BASE-rate cover (1.5 weeks of ongoing demand as an arrival buffer); spikes are
+    // counted once, in the cover.
+    const safetyQty=isSlow?0:Math.ceil(adjDaily*7*SAFETY_WKS);
 
     let orderDecision=null;
     if(src==='CHINA'){
@@ -1488,7 +1578,7 @@ function computeStats(){
     const sessionsTopup=src==='INHOUSE'&&DEHY[sku]?sessionsToTopupFromZero(skuStub):0;
     const trigWks=src==='INHOUSE'&&DEHY[sku]?ihTriggerWeeks(skuStub):IH_HEALTHY_WKS;
     const ihHealthy=src==='INHOUSE'&&weeksOnHand>=trigWks;
-    skuStats[sku]={sku,src,isSlow,safetyQty,wkTotals,ma,autoMa,manualMa:useManual?manualMa:null,useManual,useLocked,lockedForecast:useLocked?lockedForecast:null,daily,traj,trajPattern,trajRawPct,burnSource,adjDaily,thresh,threshQty,orderTriggerQty,currentStock,effectiveStock,weeksOnHand,daysTillStockout,prodNeeded,soldSince,confIn,oosActive,seaOnly,orderDecision,pendSeaOrders,pendAirOrders,ihHealthy,sessionsTopup,trigWks,buffer:BUFFER[sku]||0,expectedUplift,upliftEventsUsed,despiked,wkBase,monthSeries};
+    skuStats[sku]={sku,src,isSlow,safetyQty,wkTotals,ma,autoMa,manualMa:useManual?manualMa:null,useManual,useLocked,lockedForecast:useLocked?lockedForecast:null,daily,traj,trajPattern,trajRawPct,burnSource,adjDaily,thresh,threshQty,orderTriggerQty,currentStock,effectiveStock,weeksOnHand,daysTillStockout,prodNeeded,soldSince,confIn,oosActive,seaOnly,orderDecision,pendSeaOrders,pendAirOrders,ihHealthy,sessionsTopup,trigWks,buffer:BUFFER[sku]||0,expectedUplift,upliftEventsUsed,despiked,wkBase,monthSeries,burnClass:br.cls,burnWin:br.win,burnDensity:br.density,burnWinUsed:br.used,latestWeekRate:br.latestWeek,recentThirdRate:br.recentThird,olderRestRate:br.olderRest};
   });
   updateCards();buildAlerts();
 }
@@ -3339,11 +3429,17 @@ function buildTrajTag(s){
     const color=s.trajPattern==='rising'?'var(--orange)':'var(--text3)';
     const sign=s.traj>=0?'+':'';
     const capped=Math.abs(s.trajRawPct)>30?` (capped from ${Math.round(s.trajRawPct)}%)`:'';
-    const tip=`trajectory (month-on-month): ${s.trajPattern}${capped}\nmonthly g/d: ${mseries}  (* = partial month)\nbase (last full month): ${fmt(Math.round(s.autoMa/7))}${uomT}/d → adjusted: ${fmt(Math.round(s.adjDaily))}${uomT}/d (${sign}${Math.round(s.traj)}%)`;
+    const winStr=`${s.burnClass} · ${s.burnWinUsed} wk (trimmed)`;
+    const tip=`trajectory (recency-gated): ${s.trajPattern}${capped}\nrecency base (${winStr}): ${fmt(Math.round(s.autoMa/7))}${uomT}/d → adjusted ${fmt(Math.round(s.adjDaily))}${uomT}/d (${sign}${Math.round(s.traj)}%)\nlatest wk ${fmt(Math.round(s.latestWeekRate))} · recent half ${fmt(Math.round(s.recentThirdRate))} · older ${fmt(Math.round(s.olderRestRate))}\nmonthly g/d (ref): ${mseries}  (* = partial month)`;
     return `<span title="${tip}" style="font-size:9px;color:${color};border:1px solid ${color};padding:1px 4px;border-radius:2px;margin-left:4px;cursor:help">${arrow}${sign}${Math.round(s.traj)}%</span>`;
   }
-  const lbl=s.trajPattern==='new-sku'?'new SKU':s.trajPattern==='launch-partial'?'launch month':'flat/choppy';
-  return `<span title="trajectory not applied (${lbl})\nmonthly g/d: ${mseries||'—'}  (* = partial month)\nbase: ${fmt(Math.round(s.adjDaily))}${uomT}/d" style="font-size:9px;color:var(--text3);opacity:.55;margin-left:4px;cursor:help">≈</span>`;
+  const unconf=s.trajPattern==='rising-unconfirmed'||s.trajPattern==='falling-unconfirmed';
+  const lbl=s.trajPattern==='new-sku'?'new SKU':s.trajPattern==='launch-partial'?'launch month'
+    :s.trajPattern==='rising-unconfirmed'?'rise not confirmed by latest wk — no boost'
+    :s.trajPattern==='falling-unconfirmed'?'dip not confirmed — holding base':'flat/choppy';
+  const col=unconf?'var(--yellow)':'var(--text3)';
+  const tip2=`trajectory not applied (${lbl})\nrecency base (${s.burnClass} · ${s.burnWinUsed} wk (trimmed)): ${fmt(Math.round(s.adjDaily))}${uomT}/d\nlatest wk ${fmt(Math.round(s.latestWeekRate))} · recent half ${fmt(Math.round(s.recentThirdRate))} · older ${fmt(Math.round(s.olderRestRate))}\nmonthly g/d (ref): ${mseries||'—'}`;
+  return `<span title="${tip2}" style="font-size:9px;color:${col};opacity:${unconf?'.9':'.55'};margin-left:4px;cursor:help">${unconf?'⚑':'≈'}</span>`;
 }
 
 function renderInventory(){
