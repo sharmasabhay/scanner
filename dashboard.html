@@ -681,15 +681,21 @@ function getDateRangeFromPicker(){return{from:isoToDashDMY(document.getElementBy
 function initDateRangePicker(){document.getElementById('rangeFrom').value=SALES_SINCE;document.getElementById('rangeTo').value=dKey(today())}
 function refreshDashboard(){const{from,to}=getDateRangeFromPicker();init(from,to)}
 // ─── Recurring-sale-event helpers ───────────────────────────────────────────
-// A calendar day is "sale-affected" if it falls within SALE_WINDOW of any N.N date.
+// Roll an N.N calendar anchor forward to the business day its spike actually posts on.
+// Orders over a weekend (or that would post on a public holiday) batch to the next working
+// day — e.g. 8.8 (Sat) → Sun → Mon 10/08 (National Day PH) → posts Tue 11/08. Business day =
+// Mon–Fri and not a public holiday. This keeps the sale-strip window on the real spike.
+function effectiveSaleDay(anchor){ let d=new Date(anchor.getFullYear(),anchor.getMonth(),anchor.getDate());
+  let guard=0; while((d.getDay()===0||d.getDay()===6||isPH(d))&&guard++<14){ d=addDays(d,1); } return d; }
+// A calendar day is "sale-affected" if it falls within SALE_WINDOW of any N.N sale's EFFECTIVE (posted) day.
 function isSaleDay(d){ if(!SALE_CALENDAR.length)return false; const y=d.getFullYear();
-  for(let yy=y-1;yy<=y+1;yy++){ for(const [mm,dd] of SALE_CALENDAR){ const diff=Math.round((d-new Date(yy,mm-1,dd))/86400000); if(diff>=-SALE_WINDOW.pre&&diff<=SALE_WINDOW.post)return true; } } return false; }
+  for(let yy=y-1;yy<=y+1;yy++){ for(const [mm,dd] of SALE_CALENDAR){ const eff=effectiveSaleDay(new Date(yy,mm-1,dd)); const diff=Math.round((d-eff)/86400000); if(diff>=-SALE_WINDOW.pre&&diff<=SALE_WINDOW.post)return true; } } return false; }
 // A one-time/special campaign day (user-flagged) — excluded from the base rate, not provisioned.
 function isCampaignDay(d,sku){ if(!CAMPAIGN_ONETIME.length)return false; const k=dKey(d);
   for(const c of CAMPAIGN_ONETIME){ if(c===k)return true; if(sku&&c===sku+'|'+k)return true; } return false; }
 // Day-offsets (from today) of upcoming sale ANCHOR dates within horizonDays (each counted once).
-function saleOffsetsAhead(horizonDays){ if(!SALE_CALENDAR.length)return []; const t0=today(),offs=[];
-  for(let dd=1;dd<=horizonDays;dd++){ const d=addDays(t0,dd),m=d.getMonth()+1,day=d.getDate(); if(SALE_CALENDAR.some(([mm,dy])=>mm===m&&dy===day))offs.push(dd); } return offs; }
+function saleOffsetsAhead(horizonDays){ if(!SALE_CALENDAR.length)return []; const t0=today(),offs=new Set();
+  for(let yy=t0.getFullYear();yy<=t0.getFullYear()+2;yy++){ for(const [mm,dd] of SALE_CALENDAR){ const eff=effectiveSaleDay(new Date(yy,mm-1,dd)); const off=daysBetween(t0,eff); if(off>=1&&off<=horizonDays)offs.add(off); } } return [...offs].sort((a,b)=>a-b); }
 // Auto-measure per-event uplift for one SKU from its loaded daily history. Each event:
 // (sale-window demand) − (local pre-window baseline/day × window days), clamped ≥0.
 // Returns array oldest→newest; caller averages the most-recent SALE_UPLIFT_EVENTS.
@@ -697,11 +703,11 @@ function measureUplifts(sku,dayData){ if(!SALE_CALENDAR.length)return [];
   const keys=Object.keys(dayData); if(!keys.length)return [];
   const ds=keys.map(k=>{const[y,m,d]=k.split('-').map(Number);return new Date(y,m-1,d);}).sort((a,b)=>a-b);
   const first=ds[0],last=ds[ds.length-1],anchors=[];
-  for(let y=first.getFullYear();y<=last.getFullYear();y++){ for(const [mm,dd] of SALE_CALENDAR){ const a=new Date(y,mm-1,dd); if(a>=first&&a<=last)anchors.push(a); } }
+  for(let y=first.getFullYear();y<=last.getFullYear();y++){ for(const [mm,dd] of SALE_CALENDAR){ const a=effectiveSaleDay(new Date(y,mm-1,dd)); if(a>=first&&a<=last)anchors.push(a); } }
   anchors.sort((a,b)=>a-b); const ups=[];
   for(const a of anchors){ if(addDays(a,SALE_WINDOW.post)>last)continue;   // skip incomplete current event
-    let winDem=0,winDays=0; for(let off=-SALE_WINDOW.pre;off<=SALE_WINDOW.post;off++){ const wd=addDays(a,off); if(wd.getDay()===0)continue; winDem+=dayData[dKey(wd)]||0; winDays++; }
-    let baseDem=0,baseDays=0; for(let off=-(SALE_WINDOW.pre+14);off<-SALE_WINDOW.pre;off++){ const d=addDays(a,off); if(d.getDay()===0||isSaleDay(d))continue; baseDem+=dayData[dKey(d)]||0; baseDays++; }
+    let winDem=0,winDays=0; for(let off=-SALE_WINDOW.pre;off<=SALE_WINDOW.post;off++){ const wd=addDays(a,off); if(wd.getDay()===0||isPH(wd))continue; winDem+=dayData[dKey(wd)]||0; winDays++; }
+    let baseDem=0,baseDays=0; for(let off=-(SALE_WINDOW.pre+14);off<-SALE_WINDOW.pre;off++){ const d=addDays(a,off); if(d.getDay()===0||isPH(d)||isSaleDay(d))continue; baseDem+=dayData[dKey(d)]||0; baseDays++; }
     if(baseDays<5)continue; const baseDaily=baseDem/baseDays; ups.push(Math.max(0,winDem-baseDaily*winDays)); }
   return ups; }
 
