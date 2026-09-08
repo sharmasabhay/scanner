@@ -382,9 +382,13 @@ function volStr(lines,showPallet){const{cbm,unmeasured,pct}=batchVol(lines);let 
 // Empty by default — burn rate auto-computed from last 4 weeks live data.
 // Add entries via Log Actions tab if you want to override a specific SKU.
 let MANUAL_WEEKLY_MA={};
-// OOS-locked forecast stockhold (overrides threshold calculation for items that have been OOS)
-// User locks these manually based on historical pre-OOS performance
-let OOS_LOCKED_FORECAST={TREATS_FRVG_003:9200,TREATS_FRVG_004:2850,TREATS_SEAF_007:126}; // SEAF_007 squid: OOS since 24/06, locked at 6-week qty (3/day×42=126pc) so OOS zeros don't decay its demand; auto-unlocks when sales recover
+// OOS-locked forecast stockhold (temporary floor while an item is genuinely OOS).
+// AUTO-RELEASE (08 Sep 2026): a positive Receipt in InventoryLog after the latest OOS
+// start is the objective recovery signal. Once stock is received, the normal forecast
+// takes over immediately; we no longer wait for several weeks of post-restock sales.
+// A lock explicitly set through Log Actions in the current session remains authoritative.
+let OOS_LOCKED_FORECAST={TREATS_FRVG_003:9200,TREATS_FRVG_004:2850,TREATS_SEAF_007:126};
+const MANUAL_LOCK_SKUS=new Set();
 // ─── Per-SKU seasonal factors (monthly demand multipliers, keys 1..12 = Jan..Dec) ───
 // Neutral by default: any SKU not listed (or any factor left at 1) behaves EXACTLY as before.
 // A factor scales that month's expected demand vs a normal month, and it's applied to the
@@ -1013,9 +1017,17 @@ function trajFromSeries(vals){
 // provisioned separately for the coverage window via expectedUplift (SALE_CALENDAR).
 const BURN_WK_DENSE=6;       // dense daily sellers: 6 complete weeks (trims to 4)
 const BURN_WK_MEDIUM=7;      // medium
-const BURN_WK_SPARSE=9;      // sparse/lumpy: wider for stability
+const BURN_WK_SPARSE=9;      // sparse/lumpy gram SKUs: wider for stability
 const DENSITY_LOOKBACK=48;   // in-stock weekdays scanned to classify density
 const DENSE_CUTOFF=0.6, SPARSE_CUTOFF=0.3;
+// Piece SKUs are structurally lumpy: a handful of orders can swing a weekly % wildly.
+// Use three COMPLETE calendar months instead, weighting recent history 20/30/50.
+// Positive trajectory is allowed only when all three months rise consecutively; capped
+// at +20%. Falling/choppy patterns never reduce the base (same stockout-safe principle).
+const PIECE_BURN_MONTHS=3;
+const PIECE_MONTH_WEIGHTS=[0.20,0.30,0.50];
+const PIECE_TRAJ_CAP=20;
+const PIECE_TREND_MIN_STEP=0.03;
 
 const _mean=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
 function _mondayOf(d){ return addDays(d,-(((d.getDay()+6)%7))); }   // ISO Monday
@@ -1059,6 +1071,69 @@ function adaptiveBurnRate(sku,dayData){
   const olderArr=weeks.slice(half);
   return {base,cls,density,win:nWeeks,used:weeks.length,
           latestWeek:weeks[0],recentThird:recentHalf,olderRest:olderArr.length?_mean(olderArr):recentHalf};
+}
+
+
+// Long-horizon burn model for UOM==='pcs'. Weekly buckets are too noisy for piece SKUs,
+// so use the latest three COMPLETE calendar months. Recurring N.N sale windows and OOS
+// days are stripped here exactly like the weekly model; their uplift is provisioned
+// separately by expectedUplift, avoiding double-counting. Returned `base` is units per
+// in-stock Mon-Sat selling day so it plugs into the shared demand engine unchanged.
+function pieceBurnRate(sku,dayData){
+  const t=today();
+  const keys=Object.keys(dayData).sort();
+  const firstDay=keys.length?new Date(keys[0]):t;
+  const months=[];
+  let y=t.getFullYear(),m=t.getMonth()-1;
+  if(m<0){m=11;y--;}
+  let guard=0;
+  while(months.length<PIECE_BURN_MONTHS&&guard++<18){
+    const first=new Date(y,m,1),last=new Date(y,m+1,0);
+    if(last<firstDay)break;
+    // Only use months for which the live dataset covers the whole month.
+    if(first>=firstDay){
+      let units=0,days=0;
+      for(let d=new Date(first);d<=last;d=addDays(d,1)){
+        if(d.getDay()===0||isOosDay(sku,d)||isSaleDay(d)||isCampaignDay(d,sku))continue;
+        units+=dayData[dKey(d)]||0; days++;
+      }
+      if(days>0)months.unshift({ym:`${y}-${String(m+1).padStart(2,'0')}`,rate:units/days,total:units,days});
+    }
+    m--;if(m<0){m=11;y--;}
+  }
+  if(!months.length){
+    // Newly launched piece SKU with no full month yet: fall back to the wider weekly
+    // recency base, but suppress trajectory until a complete-month history exists.
+    const fb=adaptiveBurnRate(sku,dayData);
+    return {...fb,cls:'piece-weekly-fallback',pieceMonths:[]};
+  }
+  const rates=months.map(x=>x.rate);
+  let weights;
+  if(rates.length>=3)weights=PIECE_MONTH_WEIGHTS;
+  else if(rates.length===2)weights=[0.40,0.60];
+  else weights=[1];
+  const wsum=weights.reduce((a,b)=>a+b,0);
+  const base=rates.reduce((a,v,i)=>a+v*weights[i],0)/wsum;
+  const latest=rates[rates.length-1];
+  const older=rates.length>1?_mean(rates.slice(0,-1)):latest;
+  return {base,cls:'piece-monthly',density:0,win:PIECE_BURN_MONTHS,used:months.length,
+          latestWeek:latest,recentThird:latest,olderRest:older,pieceMonths:months};
+}
+
+// Piece trajectory gate: require a sustained rise across all three complete months.
+// Example 64→33→57 is choppy, not rising. 40→50→60 can receive a modest boost.
+function gatedPieceTraj(br){
+  const ms=br.pieceMonths||[];
+  if(ms.length<3)return {pct:0,pattern:'piece-insufficient',rawPct:0};
+  const [a,b,c]=ms.slice(-3).map(x=>x.rate);
+  if(a<=0||b<=0)return {pct:0,pattern:'choppy',rawPct:0};
+  const up1=b>=a*(1+PIECE_TREND_MIN_STEP),up2=c>=b*(1+PIECE_TREND_MIN_STEP);
+  const dn1=b<=a*(1-PIECE_TREND_MIN_STEP),dn2=c<=b*(1-PIECE_TREND_MIN_STEP);
+  const older=(a+b)/2;
+  const rawPct=older>0?(c/older-1)*100:0;
+  if(up1&&up2&&rawPct>0)return {pct:Math.min(PIECE_TRAJ_CAP,rawPct),pattern:'rising',rawPct};
+  if(dn1&&dn2&&rawPct<0)return {pct:Math.max(-PIECE_TRAJ_CAP,rawPct),pattern:'falling',rawPct};
+  return {pct:0,pattern:'choppy',rawPct};
 }
 
 // Confirmation-gated trajectory: only lean UP when BOTH the recent half AND the very
@@ -1147,9 +1222,10 @@ function computeStats(){
     // still computed (below) but is now DISPLAY-ONLY (the per-SKU monthly curve panel).
     let autoMa,traj,trajPattern,trajRawPct,oosActive=isOos;
     const monthSeries=monthlyRates(dayData,sku);   // display only
-    const br=adaptiveBurnRate(sku,dayData);
+    const isPieceSku=UOM[sku]==='pcs';
+    const br=isPieceSku?pieceBurnRate(sku,dayData):adaptiveBurnRate(sku,dayData);
     const baseDaily=br.base;
-    const tj=gatedTraj(br);
+    const tj=isPieceSku?gatedPieceTraj(br):gatedTraj(br);
     traj=tj.pct; trajPattern=tj.pattern; trajRawPct=tj.rawPct||0;
     // Weekly MA is a 6-day selling week (Mon-Sat). Sundays carry no forecast demand.
     autoMa=baseDaily*6;
@@ -1171,8 +1247,8 @@ function computeStats(){
     // Which input "won" the MAX — used to label the burn rate inline
     let burnSource;
     if(manualDaily>=trajAdjDaily&&manualDaily>=autoDaily&&useManual)burnSource='manual';
-    else if(trajAdjDaily>autoDaily&&traj>0)burnSource='trajectory';
-    else burnSource='recency-'+br.cls;
+    else if(trajAdjDaily>autoDaily&&traj>0)burnSource=isPieceSku?'piece-monthly-trajectory':'trajectory';
+    else burnSource=isPieceSku?'piece-monthly':'recency-'+br.cls;
 
     // For "threshold target" calculation: use the same burn rate as displayed/used elsewhere.
     const ma=Math.max(autoMa,useManual?manualMa:0);
@@ -1216,11 +1292,13 @@ function computeStats(){
 
     const thresh=src==='CHINA'?CHINA_WKS:IH_WKS;
 
-    // Threshold qty: use OOS-locked forecast if available AND still applicable
-    // Auto-unlock: if effective MA × threshold weeks exceeds the locked value, sales have recovered, drop the lock
+    // Threshold qty: OOS locks are TEMPORARY. A positive receipt after the latest OOS
+    // start proves stock is physically back, so normal forecasting resumes immediately.
+    // Explicit locks set through Log Actions in the current session remain authoritative.
     const lockedForecast=OOS_LOCKED_FORECAST[sku];
-    const computedThresh=coverDemand(0,thresh);  // was effectiveWeeklyMa*thresh — now provisions upcoming N.N spikes + season
-    const useLocked=lockedForecast!==undefined&&lockedForecast>0&&computedThresh<lockedForecast;
+    const computedThresh=coverDemand(0,thresh);  // provisions upcoming N.N spikes + season
+    const lockReleasedByReceipt=hasRestockReceiptAfterLatestOos(sku)&&!MANUAL_LOCK_SKUS.has(sku);
+    const useLocked=lockedForecast!==undefined&&lockedForecast>0&&!lockReleasedByReceipt&&computedThresh<lockedForecast;
     const threshQty=useLocked?lockedForecast:computedThresh;
     const orderTriggerQty=threshQty*ORDER_TRIGGER;
 
@@ -1596,21 +1674,38 @@ function computeStats(){
     const sessionsTopup=src==='INHOUSE'&&DEHY[sku]?sessionsToTopupFromZero(skuStub):0;
     const trigWks=src==='INHOUSE'&&DEHY[sku]?ihTriggerWeeks(skuStub):IH_HEALTHY_WKS;
     const ihHealthy=src==='INHOUSE'&&weeksOnHand>=trigWks;
-    skuStats[sku]={sku,src,isSlow,safetyQty,wkTotals,ma,autoMa,manualMa:useManual?manualMa:null,useManual,useLocked,lockedForecast:useLocked?lockedForecast:null,daily,traj,trajPattern,trajRawPct,burnSource,adjDaily,thresh,threshQty,orderTriggerQty,currentStock,effectiveStock,weeksOnHand,daysTillStockout,prodNeeded,soldSince,confIn,oosActive,seaOnly,orderDecision,pendSeaOrders,pendAirOrders,ihHealthy,sessionsTopup,trigWks,buffer:BUFFER[sku]||0,expectedUplift,upliftEventsUsed,despiked,wkBase,monthSeries,burnClass:br.cls,burnWin:br.win,burnDensity:br.density,burnWinUsed:br.used,latestWeekRate:br.latestWeek,recentThirdRate:br.recentThird,olderRestRate:br.olderRest};
+    skuStats[sku]={sku,src,isSlow,safetyQty,wkTotals,ma,autoMa,manualMa:useManual?manualMa:null,useManual,useLocked,lockedForecast:useLocked?lockedForecast:null,daily,traj,trajPattern,trajRawPct,burnSource,adjDaily,thresh,threshQty,orderTriggerQty,currentStock,effectiveStock,weeksOnHand,daysTillStockout,prodNeeded,soldSince,confIn,oosActive,seaOnly,orderDecision,pendSeaOrders,pendAirOrders,ihHealthy,sessionsTopup,trigWks,buffer:BUFFER[sku]||0,expectedUplift,upliftEventsUsed,despiked,wkBase,monthSeries,burnClass:br.cls,burnWin:br.win,burnDensity:br.density,burnWinUsed:br.used,latestWeekRate:br.latestWeek,recentThirdRate:br.recentThird,olderRestRate:br.olderRest,pieceMonths:br.pieceMonths||[],lockReleasedByReceipt};
   });
   updateCards();buildAlerts();
 }
 
-// Resolve a SKU's OOS windows, inferring the resume date for any open (end=null) window
-// from the first sale logged after the start (else still off → treated as today).
+// Resolve a SKU's OOS windows. For an open window (end=null), the first positive
+// InventoryLog Receipt after the OOS start is the primary recovery signal; the first
+// subsequent sale remains a fallback. The OOS span ends the day BEFORE recovery, so
+// legitimate zero-sale days after restock are counted as in-stock demand history.
 function oosWindowsFor(sku){
   const raw=OOS_WINDOWS[sku]||[]; if(!raw.length)return [];
   const dd=salesByDay[sku]||{};
   return raw.map(([s,e])=>{
     if(e)return [s,e];
-    let end=null; for(let d=addDays(new Date(s),1); d<=today(); d=addDays(d,1)){ if((dd[dKey(d)]||0)>0){ end=dKey(addDays(d,-1)); break; } }
-    return [s,end]; // end=null → still off
+    const start=new Date(s);
+    const receipts=rcvLogs.filter(l=>l.sku===sku&&l.qty>0&&l.time>=start.getTime()).sort((a,b)=>a.time-b.time);
+    let resume=receipts.length?new Date(receipts[0].time):null;
+    for(let d=addDays(start,1);d<=today();d=addDays(d,1)){
+      if((dd[dKey(d)]||0)>0){ if(!resume||d<resume)resume=new Date(d); break; }
+    }
+    return [s,resume?dKey(addDays(resume,-1)):null];
   });
+}
+function latestOosStartTs(sku){
+  const raw=OOS_WINDOWS[sku]||[];
+  if(!raw.length)return null;
+  return Math.max(...raw.map(([s])=>new Date(s).getTime()).filter(Number.isFinite));
+}
+function hasRestockReceiptAfterLatestOos(sku){
+  const start=latestOosStartTs(sku);
+  if(start===null)return false;
+  return rcvLogs.some(l=>l.sku===sku&&l.qty>0&&l.time>=start);
 }
 function isOosDay(sku,date){
   const k=dKey(date);
@@ -3442,6 +3537,16 @@ function renderProduction(){
 function buildTrajTag(s){
   const uomT=UOM[s.sku]||'g';
   const mseries=(s.monthSeries||[]).slice(-5).map(m=>`${m.ym.slice(5)} ${fmt(Math.round(m.perDay))}${m.complete?'':'*'}`).join(' → ');
+  if(s.burnClass==='piece-monthly'){
+    const pm=(s.pieceMonths||[]).map(m=>`${m.ym.slice(5)} ${fmt(Math.round(m.total))}pc (${m.rate.toFixed(2)}/d)`).join(' → ');
+    const rising=s.trajPattern==='rising';
+    const falling=s.trajPattern==='falling';
+    const applied=rising&&s.traj>0;
+    const label=applied?`↑+${Math.round(s.traj)}%`:falling?'↓0%':'≈';
+    const color=applied?'var(--orange)':falling?'var(--text3)':'var(--text3)';
+    const tip=`piece/lumpy model: ${s.burnWinUsed} complete months, weighted 20/30/50\nmonthly non-spike in-stock history: ${pm||'—'}\nbase: ${s.autoMa.toFixed(1)}${uomT}/selling-wk → ${s.adjDaily.toFixed(2)}${uomT}/selling-day\ntrajectory: ${s.trajPattern}${applied?` (+${Math.round(s.traj)}%, capped at ${PIECE_TRAJ_CAP}%)`:' — no upward boost'}\nOOS lock: ${s.lockReleasedByReceipt?'released by receipt':'not receipt-released'}`;
+    return `<span title="${tip}" style="font-size:9px;color:${color};opacity:${applied?'1':'.65'};margin-left:4px;cursor:help">${label}</span>`;
+  }
   if(s.trajPattern==='rising'||s.trajPattern==='falling'){
     const arrow=s.trajPattern==='rising'?'↑':'↓';
     const color=s.trajPattern==='rising'?'var(--orange)':'var(--text3)';
@@ -3843,7 +3948,7 @@ function logStocktake(){
 function logCampaign(){const name=document.getElementById('campName').value,start=document.getElementById('campStart').value,end=document.getElementById('campEnd').value;if(!name||!start||!end)return;campaigns.push({name,start,end,time:Date.now()});buildAlerts();document.getElementById('campLog').innerHTML=campaigns.slice(-5).reverse().map(c=>`<div class="loge"><strong>${c.name}</strong> ${fmtDate(new Date(c.start))} → ${fmtDate(new Date(c.end))}</div>`).join('');['campName','campStart','campEnd'].forEach(id=>document.getElementById(id).value='');}
 function logBufferUpdate(){const sku=document.getElementById('bufSku').value,qty=parseFloat(document.getElementById('bufQty').value);if(!sku||isNaN(qty))return;const prev=BUFFER[sku]||0;BUFFER[sku]=qty;bufferEdits.push({sku,prev,qty,time:Date.now()});init();document.getElementById('bufLog').innerHTML=bufferEdits.slice(-5).reverse().map(b=>`<div class="loge">${new Date(b.time).toLocaleString('en-SG',{hour12:false})} — <strong>${nm(b.sku)}</strong>: ${b.prev}g → ${b.qty}g</div>`).join('');document.getElementById('bufQty').value='';}
 function logMaUpdate(){const sku=document.getElementById('maSku').value,qty=parseFloat(document.getElementById('maQty').value);if(!sku||isNaN(qty))return;const prev=MANUAL_WEEKLY_MA[sku]||0;if(qty===0)delete MANUAL_WEEKLY_MA[sku];else MANUAL_WEEKLY_MA[sku]=qty;maEdits.push({sku,prev,qty,time:Date.now()});computeStats();renderAll();document.getElementById('maLog').innerHTML=maEdits.slice(-5).reverse().map(m=>`<div class="loge">${new Date(m.time).toLocaleString('en-SG',{hour12:false})} — <strong>${nm(m.sku)}</strong> MA: ${m.prev}/wk → ${m.qty===0?'auto':m.qty+'/wk'}</div>`).join('');document.getElementById('maQty').value='';}
-function logLockUpdate(){const sku=document.getElementById('lockSku').value,qty=parseFloat(document.getElementById('lockQty').value);if(!sku||isNaN(qty))return;const prev=OOS_LOCKED_FORECAST[sku]||0;if(qty===0)delete OOS_LOCKED_FORECAST[sku];else OOS_LOCKED_FORECAST[sku]=qty;lockEdits.push({sku,prev,qty,time:Date.now()});computeStats();renderAll();document.getElementById('lockLog').innerHTML=lockEdits.slice(-5).reverse().map(l=>`<div class="loge">${new Date(l.time).toLocaleString('en-SG',{hour12:false})} — <strong>${nm(l.sku)}</strong> locked: ${l.prev||'auto'} → ${l.qty===0?'auto':l.qty}</div>`).join('');document.getElementById('lockQty').value='';}
+function logLockUpdate(){const sku=document.getElementById('lockSku').value,qty=parseFloat(document.getElementById('lockQty').value);if(!sku||isNaN(qty))return;const prev=OOS_LOCKED_FORECAST[sku]||0;if(qty===0){delete OOS_LOCKED_FORECAST[sku];MANUAL_LOCK_SKUS.delete(sku);}else{OOS_LOCKED_FORECAST[sku]=qty;MANUAL_LOCK_SKUS.add(sku);}lockEdits.push({sku,prev,qty,time:Date.now()});computeStats();renderAll();document.getElementById('lockLog').innerHTML=lockEdits.slice(-5).reverse().map(l=>`<div class="loge">${new Date(l.time).toLocaleString('en-SG',{hour12:false})} — <strong>${nm(l.sku)}</strong> locked: ${l.prev||'auto'} → ${l.qty===0?'auto':l.qty}</div>`).join('');document.getElementById('lockQty').value='';}
 function updateEta(){const val=document.getElementById('etaOrd').value,newEta=document.getElementById('etaNew').value,newQty=parseFloat(document.getElementById('etaQtyU').value);if(!val)return;const isAir=val.startsWith('a');const id=parseInt(val.slice(1));const o=(isAir?airOrders:seaOrders).find(x=>x.id===id);if(o){if(newEta)o.eta=newEta;if(!isNaN(newQty))o.qty=newQty;computeStats();renderAll();populateDropdowns();}}
 
 // ── Reconciliation list: EVERY overdue, unreceived shipment (must-clear, manual) ──
