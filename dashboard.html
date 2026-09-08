@@ -220,8 +220,10 @@ tr:last-child td{border-bottom:none}tr:hover td{background:var(--bg2)}
 
 <script>
 // ============================================================
-// TREATS DASHBOARD v7 — last updated 18 May 2026
+// TREATS DASHBOARD — updated 08 Sep 2026
 // Companion to treats_webapp.gs v7. See treats_design_doc.md for full spec.
+// Forecast fix (08 Sep 2026): Mon-Sat selling calendar is now used consistently
+// across China ordering + in-house production; Sundays carry zero forecast burn.
 // Major features:
 //   - Sales: archived daily tabs + TodaySales (intraday from 12pm SGT)
 //   - InventoryLog: persistent, replayed on every page load (Receipt/Production/Stocktake/Stock Discrepancy)
@@ -1149,7 +1151,8 @@ function computeStats(){
     const baseDaily=br.base;
     const tj=gatedTraj(br);
     traj=tj.pct; trajPattern=tj.pattern; trajRawPct=tj.rawPct||0;
-    autoMa=baseDaily*7;
+    // Weekly MA is a 6-day selling week (Mon-Sat). Sundays carry no forecast demand.
+    autoMa=baseDaily*6;
 
     // Optional per-SKU manual override (only used if explicitly set via Log Actions)
     const manualMa=MANUAL_WEEKLY_MA[sku];
@@ -1160,9 +1163,9 @@ function computeStats(){
     // "still rising" reading can't inflate the order (the salmon fix). A downward reading
     // is informational — we keep base as a floor via Math.max (never cut below on a dip),
     // so a temporary dip can't drive a stockout.
-    const autoDaily=autoMa/7;
+    const autoDaily=autoMa/6;
     const trajAdjDaily=autoDaily*(1+Math.max(0,traj)/100);
-    const manualDaily=useManual?manualMa/7:0;
+    const manualDaily=useManual?manualMa/6:0;
     const adjDaily=Math.max(0.01,autoDaily,trajAdjDaily,manualDaily);
 
     // Which input "won" the MAX — used to label the burn rate inline
@@ -1173,8 +1176,8 @@ function computeStats(){
 
     // For "threshold target" calculation: use the same burn rate as displayed/used elsewhere.
     const ma=Math.max(autoMa,useManual?manualMa:0);
-    const daily=ma/7;
-    const effectiveWeeklyMa=adjDaily*7;
+    const daily=ma/6;
+    const effectiveWeeklyMa=adjDaily*6;
 
     // ─── Sale-event uplift (auto-measured) — extra units to provision per upcoming N.N sale ───
     let expectedUplift=0, upliftEventsUsed=0;
@@ -1189,19 +1192,25 @@ function computeStats(){
     // production, so they can't disagree. Includes the per-SKU seasonal layer
     // (neutral unless SEASONAL[sku] set) and scheduled N.N sale uplift booked on each
     // upcoming anchor. With no seasonal factors and expectedUplift=0, every helper
-    // reduces EXACTLY to the flat adjDaily formula (coverDemand(0,w)=adjDaily*7*w).
+    // reduces to the Mon-Sat selling-week equivalent (6 selling days per full week).
     const _t0=today();
     const _sf=SEASONAL[sku];
     const _baseF=_sf?(_sf[_t0.getMonth()+1]||1):1;
     const seasRatio=off=>{ if(!_sf||!_baseF)return 1; const m=addDays(_t0,off).getMonth()+1; return (_sf[m]||1)/_baseF; };
     const _SEAS_H=760, _cum=new Float64Array(_SEAS_H+2);
-    for(let _d=1;_d<=_SEAS_H+1;_d++)_cum[_d]=_cum[_d-1]+adjDaily*seasRatio(_d);
+    // Forecast demand follows the same selling calendar as the historical burn model:
+    // Monday-Saturday consume stock; Sundays consume zero. This applies to both
+    // China ordering and in-house production because they share this demand engine.
+    const isSellingOffset=off=>addDays(_t0,off).getDay()!==0;
+    const baseRateAt=off=>isSellingOffset(off)?adjDaily*seasRatio(off):0;
+    for(let _d=1;_d<=_SEAS_H+1;_d++)_cum[_d]=_cum[_d-1]+baseRateAt(_d);
     const upliftInWindow=(a,b)=>{ if(!expectedUplift)return 0; let n=0; for(const o of saleOffsetsGlobal){ if(o>a&&o<=b)n++; } return n*expectedUplift; };
-    const burnBetween=(a,b)=>{ if(b<=a)return 0; a=Math.max(0,a); b=Math.min(_SEAS_H,b);
+    const baseBurnBetween=(a,b)=>{ if(b<=a)return 0; a=Math.max(0,a); b=Math.min(_SEAS_H,b);
       const ia=Math.floor(a),ib=Math.floor(b); let s=_cum[ib]-_cum[ia];
-      s-=adjDaily*seasRatio(ia+1)*(a-ia); s+=adjDaily*seasRatio(ib+1)*(b-ib); return Math.max(0,s)+upliftInWindow(a,b); };
+      s-=baseRateAt(ia+1)*(a-ia); s+=baseRateAt(ib+1)*(b-ib); return Math.max(0,s); };
+    const burnBetween=(a,b)=>baseBurnBetween(a,b)+upliftInWindow(a,b);
     const daysToZero=(stk,fromDay)=>{ if(stk<=0)return 0; if(adjDaily<=0&&!expectedUplift)return Infinity;
-      let rem=stk,d=Math.floor(fromDay); while(d<_SEAS_H){ let r=adjDaily*seasRatio(d+1); if(saleSetGlobal.has(d+1))r+=expectedUplift;
+      let rem=stk,d=Math.floor(fromDay); while(d<_SEAS_H){ let r=baseRateAt(d+1); if(saleSetGlobal.has(d+1))r+=expectedUplift;
         if(r<=0){d++;continue;} if(rem<=r)return (d-fromDay)+rem/r; rem-=r; d++; } return _SEAS_H-fromDay; };
     const coverDemand=(fromDay,weeks)=>burnBetween(fromDay,fromDay+weeks*7);
 
@@ -1285,7 +1294,7 @@ function computeStats(){
     // would provision those early-window sales TWICE (29 Jul 2026 fix). safetyQty is therefore
     // pure BASE-rate cover (1.5 weeks of ongoing demand as an arrival buffer); spikes are
     // counted once, in the cover.
-    const safetyQty=isSlow?0:Math.ceil(adjDaily*7*SAFETY_WKS);
+    const safetyQty=isSlow?0:Math.ceil(baseBurnBetween(0,SAFETY_WKS*7));
 
     let orderDecision=null;
     if(src==='CHINA'){
@@ -1352,7 +1361,7 @@ function computeStats(){
       const earliestSeaEta=arrivalsForSim.find(a=>a.type==='sea')?.eta||null;
       
       // Weeks on hand using effective stock (current + ALL pending in)
-      const weeksOnHandEff=adjDaily>0?(effectiveStock/(adjDaily*7)):99;
+      const weeksOnHandEff=adjDaily>0?(effectiveStock/(adjDaily*6)):99;
       const leadWeeks=leadDays/7;
       
       // Stock at the moment a new order placed today would arrive (used for urgency check)
@@ -1577,10 +1586,10 @@ function computeStats(){
       orderDecision={orderByDate,orderByDays,seaOrderQty,isSlow,safetyQty,airNeeded,airBridgeDays,airIsViable,airGaps,urgency,leadDays,airLeadTotal,threshQty,thresh,orderTriggerQty,stockAtArrivalToday,effectiveStock,stockoutDate,earliestSeaEta,weeksOnHandEff,hasMfrLead,seaTopupShortfall,seaTopupOrderByDays,seaTopupOrderByDate,seaTopupQty,stockAfterAllPending,firstPendingSea,lastPendingDay,nextCycleOrderByDays,nextCycleOrderByDate,nextCycleOrderQty,nextCycleDayBelowThresh,nextCycleStockoutDay};
     }
     const prodNeeded=src==='INHOUSE'?Math.max(0,threshQty-currentStock):0;
-    const weeksOnHand=adjDaily>0?currentStock/(adjDaily*7):99;
+    const weeksOnHand=adjDaily>0?currentStock/(adjDaily*6):99;
     // Days until current stock runs out (used for production prioritization
     // and the inventory tab's "days left" column).
-    const daysTillStockout=adjDaily>0?Math.floor(currentStock/adjDaily):999;
+    const daysTillStockout=adjDaily>0?Math.floor(daysToZero(currentStock,0)):999;
     // Inhouse healthy: per-SKU tiered threshold based on sessionsToTopupFromZero.
     // Compute on a temporary stub so the helper can reach threshQty/adjDaily.
     const skuStub={sku,threshQty,adjDaily};
@@ -2112,7 +2121,7 @@ function renderOrderTable(title,rows,color,collapsed){
   h+=`<div class="tw"${collapsed?' style="display:none"':''}><table><thead><tr><th>treat</th><th>stock now</th><th>+ pending</th><th>burn/d (w/ buffer)</th><th>order by</th><th>lead time</th><th>sea order qty</th><th>stock at arrival</th><th>pending in</th></tr></thead><tbody>`;
   rows.forEach(s=>{
     const od=s.orderDecision;
-    const wksLeft=s.adjDaily>0?s.currentStock/(s.adjDaily*7):99;
+    const wksLeft=s.adjDaily>0?s.currentStock/(s.adjDaily*6):99;
     const obDays=Math.round(od.orderByDays);
     const obStr=obDays<=0?'<span class="n-red" style="font-family:var(--mono);font-weight:600">today</span>'
       :`<span style="font-family:var(--mono)" class="${obDays<=7?'n-red':obDays<=14?'n-yellow':''}">${fmtDate(od.orderByDate)}<br><span style="font-size:10px;color:var(--text3)">${obDays}d</span></span>`;
@@ -3439,7 +3448,7 @@ function buildTrajTag(s){
     const sign=s.traj>=0?'+':'';
     const capped=Math.abs(s.trajRawPct)>30?` (capped from ${Math.round(s.trajRawPct)}%)`:'';
     const winStr=`${s.burnClass} · ${s.burnWinUsed} wk (trimmed)`;
-    const tip=`trajectory (recency-gated): ${s.trajPattern}${capped}\nrecency base (${winStr}): ${fmt(Math.round(s.autoMa/7))}${uomT}/d → adjusted ${fmt(Math.round(s.adjDaily))}${uomT}/d (${sign}${Math.round(s.traj)}%)\nlatest wk ${fmt(Math.round(s.latestWeekRate))} · recent half ${fmt(Math.round(s.recentThirdRate))} · older ${fmt(Math.round(s.olderRestRate))}\nmonthly g/d (ref): ${mseries}  (* = partial month)`;
+    const tip=`trajectory (recency-gated): ${s.trajPattern}${capped}\nrecency base (${winStr}): ${fmt(Math.round(s.autoMa/6))}${uomT}/d → adjusted ${fmt(Math.round(s.adjDaily))}${uomT}/d (${sign}${Math.round(s.traj)}%)\nlatest wk ${fmt(Math.round(s.latestWeekRate))} · recent half ${fmt(Math.round(s.recentThirdRate))} · older ${fmt(Math.round(s.olderRestRate))}\nmonthly g/d (ref): ${mseries}  (* = partial month)`;
     return `<span title="${tip}" style="font-size:9px;color:${color};border:1px solid ${color};padding:1px 4px;border-radius:2px;margin-left:4px;cursor:help">${arrow}${sign}${Math.round(s.traj)}%</span>`;
   }
   const unconf=s.trajPattern==='rising-unconfirmed'||s.trajPattern==='falling-unconfirmed';
