@@ -1539,7 +1539,10 @@ function computeStats(){
           return startDay+startStock/burnRate;
         };
         // Walk arrivals
-        let gapStart=null;   // day stock first hit zero in the current gap
+        // If physical stock is already zero today (e.g. after a Stocktake override),
+        // the OOS gap starts immediately. Previously gapStart stayed null until stock
+        // crossed from positive to zero, so SKUs already at 0 never generated an air bridge.
+        let gapStart=stock<=0?0:null;   // day stock first hit zero in the current gap
         for(let i=0;i<=arrivalDays.length;i++){
           const nextEvent=i<arrivalDays.length?arrivalDays[i]:{day:horizonDays,qty:0};
           // Phase 1: burn from prevDay → nextEvent.day, checking if we hit zero
@@ -1558,12 +1561,16 @@ function computeStats(){
           // If we're in a gap, the arrival closes it
           if(gapStart!==null&&nextEvent.qty>0){
             const gapEnd=nextEvent.day;
-            const gapDays=gapEnd-gapStart;
-            // Only count gaps where the endpoint is after a possible air arrival
-            // (otherwise air can't help)
+            // Air can only bridge demand from the day the air shipment can actually
+            // arrive. If the SKU is already OOS today, do NOT size air for the first
+            // airLeadTotal days — those days are unbridgeable by an order placed now.
+            const bridgeStart=Math.max(gapStart,airLeadTotal);
+            const gapDays=gapEnd-bridgeStart;
+            // Only count the bridgeable portion of a gap. Future gaps that start after
+            // air can arrive are unchanged; today's OOS gap begins at air arrival.
             if(gapEnd>airLeadTotal&&gapDays>=1){
-              const gapQty=Math.ceil(burnBetween(gapStart,gapEnd));
-              airGaps.push({fromDay:gapStart,toDay:gapEnd,days:gapDays,qty:gapQty,replenishedBy:nextEvent.day});
+              const gapQty=Math.ceil(burnBetween(bridgeStart,gapEnd));
+              if(gapQty>0)airGaps.push({fromDay:bridgeStart,toDay:gapEnd,days:gapDays,qty:gapQty,replenishedBy:nextEvent.day,actualGapFromDay:gapStart});
             }
             gapStart=null;
           }
