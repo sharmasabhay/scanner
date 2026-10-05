@@ -318,12 +318,29 @@ function syncToast(ok,msg){
   window._toastTimer=setTimeout(()=>{t.style.opacity='0';},3500);
 }
 
-const NM={TREATS_BEEF_001:'Air Dried Beef Jerky',TREATS_BEEF_002:'Air Dried Beef Liver',TREATS_PORK_001:'Air Dried Pork Liver',TREATS_CHICK_001:'Air Dried Chicken Cubes',TREATS_KANG_001:'Air Dried Kangaroo Jerky',TREATS_DUCK_001:'Air Dried Duck Jerky',TREATS_PORK_002:'Air Dried Pork Jerky',TREATS_TURK_001:'Air Dried Turkey Jerky',TREATS_CROC_001:'Air Dried Crocodile Jerky',TREATS_DUCK_002:'Air Dried Duck Leg',TREATS_SEAF_001:'Air Dried Salmon Tail',TREATS_BEEF_003:'Air Dried Beef Trachea',TREATS_BEEF_004_Small:'Air Dried Beef Bone (Small)',TREATS_BEEF_004_Large:'Air Dried Beef Bone (Large)',TREATS_FRVG_001:'Freeze Dried Strawberries',TREATS_FRVG_002:'Freeze Dried Blueberries',TREATS_FRVG_003:'Freeze Dried Pumpkin',TREATS_FRVG_004:'Freeze Dried Purple Sweet Potato',TREATS_FRVG_005:'Freeze Dried Brussels Sprouts',TREATS_SEAF_002:'Freeze Dried Prawn',TREATS_RABB_001:'Air Dried Rabbit Ear (With Fur)',TREATS_RABB_002:'Air Dried Rabbit Front Leg',TREATS_SEAF_003:'Air Dried Shark Cartilage',TREATS_SEAF_004:'Freeze Dried Shishamo',TREATS_SEAF_005:'Freeze Dried Salmon',TREATS_OSTR_001:'Air Dried Ostrich Big Bone',TREATS_SEAF_006:'Freeze Dried Green Lipped Mussels',TREATS_SEAF_007:'Freeze Dried Giant Squid Legs',TREATS_CHICK_003:'Freeze Dried Chicken Breast Cubes',TREATS_CHICK_004:'Freeze Dried Chicken Breast Fillet',TREATS_DUCK_003:'Freeze Dried Duck Breast Cubes',TREATS_DUCK_004:'Freeze Dried Duck Breast Fillet',TREATS_SEAF_008:'Freeze Dried Cod Fish Cubes',TREATS_SEAF_009:'Freeze Dried Tuna Cubes',TREATS_FRVG_006:'Air Dried Sweet Potato',TREATS_BEEF_005:'Air Dried Cow Skin',TREATS_CHICK_006:'Air Dried Chicken Jerky',TREATS_DUCK_005:'Air Dried Duck Feet',TREATS_DUCK_006:'Air Dried Duck Neck',TREATS_CHICK_002:'Air Dried Chicken Feet',TREATS_CHICK_005:'Air Dried Chicken Neck',TREATS_CROC_002:'Air Dried Crocodile Tail',TREATS_CROC_003:'Air Dried Crocodile Feet',TREATS_PORK_005_Medium:'Air Dried Pig Ear (Medium)',TREATS_PORK_005_Jumbo:'Air Dried Pig Ear (Jumbo)',TREATS_PORK_004:'Air Dried Pig Ear Strips'};
+const NM={TREATS_BEEF_011:'Air Dried Beef Lung Puff',TREATS_NOVLVENI_002:'Air Dried Venison Jerky',TREATS_RABB_006:'Air Dried Rabbit Jerky',TREATS_KANG_002_TAIL:'Air Dried Kangaroo Tail',TREATS_KANG_002_COINS:'Air Dried Kangaroo Tail Coins',TREATS_KANG_001_LEGCUT:'Air Dried Kangaroo XL Jerky (PREMIUM CUT - LEG)',TREATS_BEEF_001:'Air Dried Beef Jerky',TREATS_BEEF_002:'Air Dried Beef Liver',TREATS_PORK_001:'Air Dried Pork Liver',TREATS_CHICK_001:'Air Dried Chicken Cubes',TREATS_KANG_001:'Air Dried Kangaroo Jerky',TREATS_DUCK_001:'Air Dried Duck Jerky',TREATS_PORK_002:'Air Dried Pork Jerky',TREATS_TURK_001:'Air Dried Turkey Jerky',TREATS_CROC_001:'Air Dried Crocodile Jerky',TREATS_DUCK_002:'Air Dried Duck Leg',TREATS_SEAF_001:'Air Dried Salmon Tail',TREATS_BEEF_003:'Air Dried Beef Trachea',TREATS_BEEF_004_Small:'Air Dried Beef Bone (Small)',TREATS_BEEF_004_Large:'Air Dried Beef Bone (Large)',TREATS_FRVG_001:'Freeze Dried Strawberries',TREATS_FRVG_002:'Freeze Dried Blueberries',TREATS_FRVG_003:'Freeze Dried Pumpkin',TREATS_FRVG_004:'Freeze Dried Purple Sweet Potato',TREATS_FRVG_005:'Freeze Dried Brussels Sprouts',TREATS_SEAF_002:'Freeze Dried Prawn',TREATS_RABB_001:'Air Dried Rabbit Ear (With Fur)',TREATS_RABB_002:'Air Dried Rabbit Front Leg',TREATS_SEAF_003:'Air Dried Shark Cartilage',TREATS_SEAF_004:'Freeze Dried Shishamo',TREATS_SEAF_005:'Freeze Dried Salmon',TREATS_OSTR_001:'Air Dried Ostrich Big Bone',TREATS_SEAF_006:'Freeze Dried Green Lipped Mussels',TREATS_SEAF_007:'Freeze Dried Giant Squid Legs',TREATS_CHICK_003:'Freeze Dried Chicken Breast Cubes',TREATS_CHICK_004:'Freeze Dried Chicken Breast Fillet',TREATS_DUCK_003:'Freeze Dried Duck Breast Cubes',TREATS_DUCK_004:'Freeze Dried Duck Breast Fillet',TREATS_SEAF_008:'Freeze Dried Cod Fish Cubes',TREATS_SEAF_009:'Freeze Dried Tuna Cubes',TREATS_FRVG_006:'Air Dried Sweet Potato',TREATS_BEEF_005:'Air Dried Cow Skin',TREATS_CHICK_006:'Air Dried Chicken Jerky',TREATS_DUCK_005:'Air Dried Duck Feet',TREATS_DUCK_006:'Air Dried Duck Neck',TREATS_CHICK_002:'Air Dried Chicken Feet',TREATS_CHICK_005:'Air Dried Chicken Neck',TREATS_CROC_002:'Air Dried Crocodile Tail',TREATS_CROC_003:'Air Dried Crocodile Feet',TREATS_PORK_005_Medium:'Air Dried Pig Ear (Medium)',TREATS_PORK_005_Jumbo:'Air Dried Pig Ear (Jumbo)',TREATS_PORK_004:'Air Dried Pig Ear Strips'};
 const nm=s=>NM[s]||s;
 
-const SRC={TREATS_DUCK_001:'CHINA',TREATS_DUCK_002:'CHINA',TREATS_BEEF_003:'CHINA',TREATS_BEEF_004_Small:'CHINA',TREATS_BEEF_004_Large:'CHINA',TREATS_RABB_001:'CHINA',TREATS_RABB_002:'CHINA',TREATS_SEAF_003:'CHINA',TREATS_OSTR_001:'CHINA',TREATS_SEAF_006:'CHINA',TREATS_SEAF_007:'CHINA',TREATS_SEAF_002:'CHINA',TREATS_SEAF_004:'CHINA',TREATS_SEAF_005:'CHINA',TREATS_FRVG_001:'CHINA',TREATS_FRVG_002:'CHINA',TREATS_FRVG_003:'CHINA',TREATS_FRVG_004:'CHINA',TREATS_FRVG_005:'CHINA',TREATS_SEAF_001:'CHINA',TREATS_CHICK_003:'CHINA',TREATS_CHICK_004:'CHINA',TREATS_DUCK_003:'CHINA',TREATS_DUCK_004:'CHINA',TREATS_SEAF_008:'CHINA',TREATS_SEAF_009:'CHINA',TREATS_FRVG_006:'CHINA',TREATS_BEEF_005:'CHINA',TREATS_CHICK_006:'CHINA',TREATS_BEEF_001:'INHOUSE',TREATS_BEEF_002:'INHOUSE',TREATS_PORK_001:'INHOUSE',TREATS_CHICK_001:'INHOUSE',TREATS_KANG_001:'INHOUSE',TREATS_TURK_001:'INHOUSE',TREATS_CROC_001:'INHOUSE',TREATS_PORK_002:'INHOUSE',TREATS_PORK_004:'INHOUSE',TREATS_CHICK_002:'INHOUSE',TREATS_DUCK_005:'INHOUSE',TREATS_DUCK_006:'INHOUSE',TREATS_CHICK_005:'INHOUSE',TREATS_CROC_002:'INHOUSE',TREATS_CROC_003:'INHOUSE',TREATS_PORK_005_Medium:'INHOUSE',TREATS_PORK_005_Jumbo:'INHOUSE'};
+const SRC={TREATS_BEEF_011:'INHOUSE',TREATS_NOVLVENI_002:'INHOUSE',TREATS_RABB_006:'INHOUSE',TREATS_KANG_002_TAIL:'INHOUSE',TREATS_KANG_002_COINS:'INHOUSE',TREATS_KANG_001_LEGCUT:'INHOUSE',TREATS_DUCK_001:'CHINA',TREATS_DUCK_002:'CHINA',TREATS_BEEF_003:'CHINA',TREATS_BEEF_004_Small:'CHINA',TREATS_BEEF_004_Large:'CHINA',TREATS_RABB_001:'CHINA',TREATS_RABB_002:'CHINA',TREATS_SEAF_003:'CHINA',TREATS_OSTR_001:'CHINA',TREATS_SEAF_006:'CHINA',TREATS_SEAF_007:'CHINA',TREATS_SEAF_002:'CHINA',TREATS_SEAF_004:'CHINA',TREATS_SEAF_005:'CHINA',TREATS_FRVG_001:'CHINA',TREATS_FRVG_002:'CHINA',TREATS_FRVG_003:'CHINA',TREATS_FRVG_004:'CHINA',TREATS_FRVG_005:'CHINA',TREATS_SEAF_001:'CHINA',TREATS_CHICK_003:'CHINA',TREATS_CHICK_004:'CHINA',TREATS_DUCK_003:'CHINA',TREATS_DUCK_004:'CHINA',TREATS_SEAF_008:'CHINA',TREATS_SEAF_009:'CHINA',TREATS_FRVG_006:'CHINA',TREATS_BEEF_005:'CHINA',TREATS_CHICK_006:'CHINA',TREATS_BEEF_001:'INHOUSE',TREATS_BEEF_002:'INHOUSE',TREATS_PORK_001:'INHOUSE',TREATS_CHICK_001:'INHOUSE',TREATS_KANG_001:'INHOUSE',TREATS_TURK_001:'INHOUSE',TREATS_CROC_001:'INHOUSE',TREATS_PORK_002:'INHOUSE',TREATS_PORK_004:'INHOUSE',TREATS_CHICK_002:'INHOUSE',TREATS_DUCK_005:'INHOUSE',TREATS_DUCK_006:'INHOUSE',TREATS_CHICK_005:'INHOUSE',TREATS_CROC_002:'INHOUSE',TREATS_CROC_003:'INHOUSE',TREATS_PORK_005_Medium:'INHOUSE',TREATS_PORK_005_Jumbo:'INHOUSE'};
 
-const UOM={TREATS_BEEF_001:'g',TREATS_BEEF_002:'g',TREATS_PORK_001:'g',TREATS_KANG_001:'g',TREATS_DUCK_001:'g',TREATS_PORK_002:'g',TREATS_TURK_001:'g',TREATS_CROC_001:'g',TREATS_DUCK_002:'pcs',TREATS_BEEF_003:'g',TREATS_BEEF_004_Small:'pcs',TREATS_BEEF_004_Large:'pcs',TREATS_RABB_001:'g',TREATS_RABB_002:'pcs',TREATS_SEAF_003:'g',TREATS_OSTR_001:'pcs',TREATS_SEAF_006:'g',TREATS_SEAF_007:'pcs',TREATS_CHICK_001:'g',TREATS_SEAF_002:'g',TREATS_SEAF_004:'g',TREATS_SEAF_005:'g',TREATS_FRVG_001:'g',TREATS_FRVG_002:'g',TREATS_FRVG_003:'g',TREATS_FRVG_004:'g',TREATS_FRVG_005:'g',TREATS_SEAF_001:'g',TREATS_PORK_004:'g',TREATS_CHICK_002:'g',TREATS_CHICK_003:'g',TREATS_CHICK_004:'g',TREATS_DUCK_003:'g',TREATS_DUCK_004:'g',TREATS_SEAF_008:'g',TREATS_SEAF_009:'g',TREATS_FRVG_006:'g',TREATS_BEEF_005:'pcs',TREATS_DUCK_005:'g',TREATS_DUCK_006:'g',TREATS_CHICK_005:'g',TREATS_CROC_002:'pcs',TREATS_CROC_003:'pcs',TREATS_CHICK_006:'g',TREATS_PORK_005_Medium:'pcs',TREATS_PORK_005_Jumbo:'pcs'};
+const UOM={TREATS_BEEF_011:'g',TREATS_NOVLVENI_002:'g',TREATS_RABB_006:'g',TREATS_KANG_002_TAIL:'pcs',TREATS_KANG_002_COINS:'g',TREATS_KANG_001_LEGCUT:'g',TREATS_BEEF_001:'g',TREATS_BEEF_002:'g',TREATS_PORK_001:'g',TREATS_KANG_001:'g',TREATS_DUCK_001:'g',TREATS_PORK_002:'g',TREATS_TURK_001:'g',TREATS_CROC_001:'g',TREATS_DUCK_002:'pcs',TREATS_BEEF_003:'g',TREATS_BEEF_004_Small:'pcs',TREATS_BEEF_004_Large:'pcs',TREATS_RABB_001:'g',TREATS_RABB_002:'pcs',TREATS_SEAF_003:'g',TREATS_OSTR_001:'pcs',TREATS_SEAF_006:'g',TREATS_SEAF_007:'pcs',TREATS_CHICK_001:'g',TREATS_SEAF_002:'g',TREATS_SEAF_004:'g',TREATS_SEAF_005:'g',TREATS_FRVG_001:'g',TREATS_FRVG_002:'g',TREATS_FRVG_003:'g',TREATS_FRVG_004:'g',TREATS_FRVG_005:'g',TREATS_SEAF_001:'g',TREATS_PORK_004:'g',TREATS_CHICK_002:'g',TREATS_CHICK_003:'g',TREATS_CHICK_004:'g',TREATS_DUCK_003:'g',TREATS_DUCK_004:'g',TREATS_SEAF_008:'g',TREATS_SEAF_009:'g',TREATS_FRVG_006:'g',TREATS_BEEF_005:'pcs',TREATS_DUCK_005:'g',TREATS_DUCK_006:'g',TREATS_CHICK_005:'g',TREATS_CROC_002:'pcs',TREATS_CROC_003:'pcs',TREATS_CHICK_006:'g',TREATS_PORK_005_Medium:'pcs',TREATS_PORK_005_Jumbo:'pcs'};
+
+// Sales-SKU variants that roll up into one production family. The live sales feed
+// still sends the package-level SKU + per-pack UOM, but stock / burn / production
+// planning should operate on the combined treat family shown in the product master.
+const SKU_ALIAS={
+  TREATS_BEEF_011_S:'TREATS_BEEF_011',TREATS_BEEF_011_M:'TREATS_BEEF_011',TREATS_BEEF_011_L:'TREATS_BEEF_011',
+  TREATS_NOVLVENI_002_S:'TREATS_NOVLVENI_002',TREATS_NOVLVENI_002_M:'TREATS_NOVLVENI_002',TREATS_NOVLVENI_002_L:'TREATS_NOVLVENI_002',
+  TREATS_RABB_006_S:'TREATS_RABB_006',TREATS_RABB_006_M:'TREATS_RABB_006',TREATS_RABB_006_L:'TREATS_RABB_006',
+  TREATS_KANG_002_M:'TREATS_KANG_002_TAIL',
+  TREATS_KANG_002_M_coins:'TREATS_KANG_002_COINS',TREATS_KANG_002_L_coins:'TREATS_KANG_002_COINS',
+  TREATS_KANG_001_S_legcut:'TREATS_KANG_001_LEGCUT',TREATS_KANG_001_M_legcut:'TREATS_KANG_001_LEGCUT',TREATS_KANG_001_L_legcut:'TREATS_KANG_001_LEGCUT'
+};
+// These new in-house families are registered for stock + sales aggregation now, but
+// automatic production scheduling is intentionally held until their real production
+// parameters (raw-to-finished yield, kg/door or pcs/door, dehydration hours + temp)
+// are supplied. Do not guess production physics from another treat.
+const PROD_SETUP_PENDING=new Set(['TREATS_BEEF_011','TREATS_NOVLVENI_002','TREATS_RABB_006','TREATS_KANG_002_TAIL','TREATS_KANG_002_COINS','TREATS_KANG_001_LEGCUT']);
 
 // Buffer per pack (grams UOM only — pcs are accurate)
 let BUFFER={TREATS_BEEF_001:2,TREATS_BEEF_002:2,TREATS_PORK_001:2,TREATS_KANG_001:2,TREATS_DUCK_001:2,TREATS_PORK_002:2,TREATS_TURK_001:2,TREATS_CROC_001:2,TREATS_BEEF_003:3,TREATS_RABB_001:3,TREATS_SEAF_003:3,TREATS_SEAF_006:2,TREATS_CHICK_001:1.5,TREATS_FRVG_002:1.5,TREATS_FRVG_003:1,TREATS_FRVG_004:2,TREATS_SEAF_004:1,TREATS_SEAF_002:3,TREATS_SEAF_001:3,TREATS_FRVG_001:3,TREATS_FRVG_005:2,TREATS_SEAF_005:2.5,TREATS_PORK_004:3,TREATS_CHICK_002:3,TREATS_CHICK_003:2,TREATS_CHICK_004:2,TREATS_DUCK_003:2,TREATS_DUCK_004:2,TREATS_SEAF_008:2,TREATS_SEAF_009:2,TREATS_FRVG_006:4,TREATS_DUCK_005:3,TREATS_DUCK_006:3,TREATS_CHICK_005:3,TREATS_CHICK_006:3};
@@ -548,7 +565,7 @@ const LONG_MIX_MAX_FILL=1.10;
 // chicken feet, duck feet, duck neck, chicken neck, crocodile feet.
 const AFTERNOON_PROCESS_OK=new Set(['TREATS_CHICK_002','TREATS_DUCK_005','TREATS_DUCK_006','TREATS_CHICK_005','TREATS_CROC_003']);
 
-const STOCK={TREATS_BEEF_001:12962,TREATS_BEEF_002:1271,TREATS_PORK_001:3922,TREATS_CHICK_001:8759,TREATS_KANG_001:11396,TREATS_DUCK_001:52850,TREATS_PORK_002:43046,TREATS_TURK_001:4014,TREATS_CROC_001:8679,TREATS_DUCK_002:45,TREATS_SEAF_001:1240,TREATS_BEEF_003:945,TREATS_BEEF_004_Small:18,TREATS_BEEF_004_Large:8,TREATS_FRVG_001:1965,TREATS_FRVG_002:1594,TREATS_FRVG_003:0,TREATS_FRVG_004:334,TREATS_FRVG_005:0,TREATS_SEAF_002:1652,TREATS_RABB_001:4444,TREATS_RABB_002:52,TREATS_SEAF_003:1891,TREATS_SEAF_004:3622,TREATS_SEAF_005:3565,TREATS_OSTR_001:6,TREATS_SEAF_006:0,TREATS_SEAF_007:54,TREATS_CHICK_003:2744,TREATS_CHICK_004:3402,TREATS_DUCK_003:324,TREATS_DUCK_004:3413,TREATS_SEAF_008:734,TREATS_SEAF_009:524,TREATS_FRVG_006:0,TREATS_BEEF_005:100,TREATS_CHICK_006:4635,TREATS_DUCK_005:4986,TREATS_DUCK_006:2048,TREATS_CHICK_002:3067,TREATS_CHICK_005:6233,TREATS_CROC_002:59,TREATS_CROC_003:22,TREATS_PORK_005_Medium:50,TREATS_PORK_005_Jumbo:41,TREATS_PORK_004:3683};
+const STOCK={TREATS_BEEF_011:0,TREATS_NOVLVENI_002:0,TREATS_RABB_006:0,TREATS_KANG_002_TAIL:0,TREATS_KANG_002_COINS:0,TREATS_KANG_001_LEGCUT:0,TREATS_BEEF_001:12962,TREATS_BEEF_002:1271,TREATS_PORK_001:3922,TREATS_CHICK_001:8759,TREATS_KANG_001:11396,TREATS_DUCK_001:52850,TREATS_PORK_002:43046,TREATS_TURK_001:4014,TREATS_CROC_001:8679,TREATS_DUCK_002:45,TREATS_SEAF_001:1240,TREATS_BEEF_003:945,TREATS_BEEF_004_Small:18,TREATS_BEEF_004_Large:8,TREATS_FRVG_001:1965,TREATS_FRVG_002:1594,TREATS_FRVG_003:0,TREATS_FRVG_004:334,TREATS_FRVG_005:0,TREATS_SEAF_002:1652,TREATS_RABB_001:4444,TREATS_RABB_002:52,TREATS_SEAF_003:1891,TREATS_SEAF_004:3622,TREATS_SEAF_005:3565,TREATS_OSTR_001:6,TREATS_SEAF_006:0,TREATS_SEAF_007:54,TREATS_CHICK_003:2744,TREATS_CHICK_004:3402,TREATS_DUCK_003:324,TREATS_DUCK_004:3413,TREATS_SEAF_008:734,TREATS_SEAF_009:524,TREATS_FRVG_006:0,TREATS_BEEF_005:100,TREATS_CHICK_006:4635,TREATS_DUCK_005:4986,TREATS_DUCK_006:2048,TREATS_CHICK_002:3067,TREATS_CHICK_005:6233,TREATS_CROC_002:59,TREATS_CROC_003:22,TREATS_PORK_005_Medium:50,TREATS_PORK_005_Jumbo:41,TREATS_PORK_004:3683};
 const CLOSING_DATE=new Date('2026-05-09');
 const CHINA_WKS=6,IH_WKS=4,SEA_LEAD=35,AIR_LEAD=10,MFR_LEAD=10,ORDER_TRIGGER=0.85,MAX_DOORS=7;
 // Per-SKU extra manufacturing lead (days), ADDED on top of the normal sea/air lead.
@@ -789,7 +806,8 @@ async function init(fromDate,toDate){
     for(const row of data.rows){
       const dt=parseDMY(row[0]);
       if(!dt||dt.getDay()===0)continue;
-      const sku=String(row[1]).trim();
+      const rawSku=String(row[1]).trim();
+      const sku=SKU_ALIAS[rawSku]||rawSku;
       const g=parseFloat(row[2])||0,p=parseFloat(row[3])||0;
       if(!sku||g===0||p===0)continue;
 
@@ -802,7 +820,7 @@ async function init(fromDate,toDate){
       if(!rawSalesByDay[sku])rawSalesByDay[sku]={};
       salesByDay[sku][dk]=(salesByDay[sku][dk]||0)+total;
       if(!rawSalesByDay[sku][dk])rawSalesByDay[sku][dk]=[];
-      rawSalesByDay[sku][dk].push({g,p,raw:rawTotal,buffered:total,buffer});
+      rawSalesByDay[sku][dk].push({g,p,raw:rawTotal,buffered:total,buffer,rawSku});
       if(!latestDate||dt>latestDate)latestDate=dt;
     }
 
@@ -1547,7 +1565,16 @@ function computeStats(){
       const seaArrivalDay=Math.max(0,orderByDays)+leadDays;
       const stockAtSeaArrival=Math.max(0,projectStock(seaArrivalDay));
       const seaTargetAtArrival=(useLocked?threshQty:coverDemand(seaArrivalDay,thresh))+safetyQty;
-      let seaOrderQty=Math.ceil(Math.max(0,seaTargetAtArrival-stockAtSeaArrival)*wasteMult(sku));
+      const seaOrderQtyGross=Math.ceil(Math.max(0,seaTargetAtArrival-stockAtSeaArrival)*wasteMult(sku));
+      // Sea stock already purchased and physically waiting in the China warehouse with
+      // no dispatch ETA must not disappear from procurement math. It cannot be placed on
+      // the time simulation yet (arrival unknown), but it DOES reduce how much NEW stock
+      // we should purchase. Example: Duck Leg 24pc gross requirement - 16pc already in
+      // China warehouse = only 8pc additional PO requirement.
+      const pendingSeaWarehouseQty=pendSeaOrders
+        .filter(o=>!o.shipped&&!o.eta)
+        .reduce((a,o)=>a+(o.qty||0),0);
+      let seaOrderQty=Math.ceil(Math.max(0,seaOrderQtyGross-pendingSeaWarehouseQty));
       if(seaOrderQty>0&&MOQ[sku])seaOrderQty=Math.max(seaOrderQty,MOQ[sku]);
       
       // ─── Air bridge logic (v12: multi-stockout detection) ─────────────
@@ -1686,7 +1713,8 @@ function computeStats(){
       const nextCycleArrivalDay=nextCycleOrderByDays!==null?Math.max(0,nextCycleOrderByDays)+leadDays:null;
       const nextCycleStockAtArrival=nextCycleArrivalDay!==null?Math.max(0,projectStock(nextCycleArrivalDay)):0;
       const nextCycleTarget=(useLocked?threshQty:(nextCycleArrivalDay!==null?coverDemand(nextCycleArrivalDay,thresh):threshQty))+safetyQty;
-      const nextCycleOrderQty=Math.ceil(Math.max(0,nextCycleTarget-nextCycleStockAtArrival)*wasteMult(sku));
+      const nextCycleOrderQtyGross=Math.ceil(Math.max(0,nextCycleTarget-nextCycleStockAtArrival)*wasteMult(sku));
+      const nextCycleOrderQty=Math.ceil(Math.max(0,nextCycleOrderQtyGross-pendingSeaWarehouseQty));
 
       // Legacy seaTopupShortfall kept for backward compat (fires when pending arrival itself < threshold)
       const seaTopupTarget=useLocked?threshQty:(lastPendingDay>0?coverDemand(lastPendingDay,thresh):threshQty);
@@ -1719,7 +1747,7 @@ function computeStats(){
       else if(weeksOnHandEff<=orderNowThreshWeeks)urgency='order_now';
       else if(weeksOnHandEff<=orderSoonThreshWeeks)urgency='order_soon';
       
-      orderDecision={orderByDate,orderByDays,seaOrderQty,isSlow,safetyQty,airNeeded,airBridgeDays,airIsViable,airGaps,urgency,leadDays,airLeadTotal,threshQty,thresh,orderTriggerQty,stockAtArrivalToday,effectiveStock,stockoutDate,earliestSeaEta,weeksOnHandEff,hasMfrLead,seaTopupShortfall,seaTopupOrderByDays,seaTopupOrderByDate,seaTopupQty,stockAfterAllPending,firstPendingSea,lastPendingDay,nextCycleOrderByDays,nextCycleOrderByDate,nextCycleOrderQty,nextCycleDayBelowThresh,nextCycleStockoutDay};
+      orderDecision={orderByDate,orderByDays,seaOrderQty,seaOrderQtyGross,pendingSeaWarehouseQty,isSlow,safetyQty,airNeeded,airBridgeDays,airIsViable,airGaps,urgency,leadDays,airLeadTotal,threshQty,thresh,orderTriggerQty,stockAtArrivalToday,effectiveStock,stockoutDate,earliestSeaEta,weeksOnHandEff,hasMfrLead,seaTopupShortfall,seaTopupOrderByDays,seaTopupOrderByDate,seaTopupQty,stockAfterAllPending,firstPendingSea,lastPendingDay,nextCycleOrderByDays,nextCycleOrderByDate,nextCycleOrderQty,nextCycleOrderQtyGross,nextCycleDayBelowThresh,nextCycleStockoutDay};
     }
     const prodNeeded=src==='INHOUSE'?Math.max(0,threshQty-currentStock):0;
     const weeksOnHand=adjDaily>0?currentStock/(adjDaily*6):99;
@@ -1974,15 +2002,21 @@ function renderOrders(){
         const arrivalDate=fmtDate(addDays(today(),arrivalDays));
         const isAirTopup=od.urgency==='air_needed'&&od.seaTopupShortfall>0;
         const isNoSea=od.urgency==='air_needed'&&!od.firstPendingSea;
-        const noteStr=isAirTopup
+        let noteStr=isAirTopup
           ?`top-up: pending sea (${fmt(od.firstPendingSea?.qty||0)}${UOM[s.sku]||'g'} on ${fmtDate(new Date(od.firstPendingSea?.eta||''))}) leaves ${fmt(od.seaTopupShortfall)}${UOM[s.sku]||'g'} short of threshold`
           :isNoSea?`no pending sea — order full ${od.thresh}-wk threshold`
           :EXTRA_LEAD.has(s.sku)?'+10d mfr lead included':'';
+        const warehouseQty=od.pendingSeaWarehouseQty||0;
+        if(warehouseQty>0){
+          const whMsg=`✓ ${fmt(warehouseQty)}${UOM[s.sku]||'g'} already ordered · China warehouse pending shipment`;
+          noteStr=noteStr?noteStr+' · '+whMsg:whMsg;
+          if((od.seaOrderQtyGross||0)>0)noteStr+=` · gross need ${fmt(od.seaOrderQtyGross)}${UOM[s.sku]||'g'}; sea qty shown is additional only`;
+        }
         const airTag=isAirTopup||isNoSea?'<span style="font-size:9px;color:var(--red);border:1px solid var(--red);padding:1px 4px;border-radius:2px;margin-left:4px">also needs ✈ air</span>':'';
         th+=`<tr>
           <td><span style="font-weight:500">${nm(s.sku)}</span>${airTag}<span class="sn">${s.sku}</span></td>
           <td class="n-red" style="font-family:var(--mono);font-weight:600">${obDays<=0?'today (overdue)':fmtDate(addDays(today(),obDays))+' ('+obDays+'d)'}</td>
-          <td style="font-family:var(--mono);font-weight:600;color:var(--yellow)">${fmt(qty)}${UOM[s.sku]||'g'}</td>
+          <td style="font-family:var(--mono);font-weight:600;color:var(--yellow)">${fmt(qty)}${UOM[s.sku]||'g'}${(od.pendingSeaWarehouseQty||0)>0?`<br><span style="font-size:9px;color:var(--green);font-weight:500">+ ${fmt(od.pendingSeaWarehouseQty)}${UOM[s.sku]||'g'} in China WH</span>`:''}</td>
           <td style="font-family:var(--mono);color:var(--text3)">${arrivalDate}${obDays<0?` <span style="color:var(--red);font-size:9px">(${Math.abs(obDays)}d late)</span>`:''}</td>
           <td style="font-size:10px;color:var(--text3)">${noteStr}</td>
         </tr>`;
@@ -2336,7 +2370,7 @@ function renderOrderTable(title,rows,color,collapsed){
       <td style="font-family:var(--mono)">${fmtRate(s.adjDaily,UOM[s.sku]||'g')}/d${trajTag} ${bufStr}</td>
       <td>${obStr}${topupNote}</td>
       <td>${leadStr}</td>
-      <td class="${od.seaOrderQty>0?'n-yellow':''}" style="font-family:var(--mono);font-weight:${od.seaOrderQty>0?'600':'400'}">${od.seaOrderQty>0?fmt(od.seaOrderQty)+(UOM[s.sku]||'g'):'—'}</td>
+      <td class="${od.seaOrderQty>0?'n-yellow':''}" style="font-family:var(--mono);font-weight:${od.seaOrderQty>0?'600':'400'}">${od.seaOrderQty>0?fmt(od.seaOrderQty)+(UOM[s.sku]||'g'):'—'}${(od.pendingSeaWarehouseQty||0)>0?`<br><span style="font-size:9px;color:var(--green);font-weight:500">net of ${fmt(od.pendingSeaWarehouseQty)}${UOM[s.sku]||'g'} China WH</span>`:''}</td>
       <td style="color:${satColor};font-family:var(--mono)">${stockAtArr>=0?fmt(stockAtArr)+(UOM[s.sku]||'g'):'<span style="color:var(--red)">stockout</span>'}</td>
       <td>${pendStr}</td>
     </tr>`;
@@ -2843,6 +2877,10 @@ function renderProduction(){
   // The auto-computed suggested plan only renders if there's something to suggest.
   let h='';
   h+=renderProductionCalendarHTML();
+  const setupPending=[...PROD_SETUP_PENDING].filter(s=>SRC[s]==='INHOUSE'&&!DEHY[s]);
+  if(setupPending.length){
+    h+=`<div class="alert al-warning" style="margin-top:14px"><span>⚙</span><span><strong>${setupPending.length} new in-house production families registered</strong> — sales variants are already rolled up for stock/burn tracking, but auto production scheduling is paused until real production settings are entered (raw→finished yield, raw kg/door or pcs/door, dehydration hours, temperature): ${setupPending.map(s=>nm(s)).join(', ')}.</span></div>`;
+  }
 
   // Production-planning candidates: ANY inhouse SKU that's below its 4-week
   // threshold and has dehy data — even if it hasn't crossed its tier trigger yet.
@@ -2853,7 +2891,9 @@ function renderProduction(){
   // but ranked after (see queue sort).
   const inhouse=Object.values(skuStats).filter(s=>s.src==='INHOUSE'&&DEHY[s.sku]&&s.prodNeeded>0);
   if(!inhouse.length){
-    h+=`<div class="empty" style="margin-top:14px">✓ all inhouse stocks at or above 4-week threshold — no production needed</div>`;
+    h+=setupPending.length
+      ?`<div class="empty" style="margin-top:14px">no schedulable production recommendation yet — existing configured in-house SKUs are healthy; new product families above still need production settings</div>`
+      :`<div class="empty" style="margin-top:14px">✓ all inhouse stocks at or above 4-week threshold — no production needed</div>`;
     document.getElementById('prodContent').innerHTML=h;
     return;
   }
