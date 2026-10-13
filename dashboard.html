@@ -318,32 +318,96 @@ function syncToast(ok,msg){
   window._toastTimer=setTimeout(()=>{t.style.opacity='0';},3500);
 }
 
-const NM={TREATS_BEEF_011:'Air Dried Beef Lung Puff',TREATS_NOVLVENI_002:'Air Dried Venison Jerky',TREATS_RABB_006:'Air Dried Rabbit Jerky',TREATS_KANG_002_TAIL:'Air Dried Kangaroo Tail',TREATS_KANG_002_COINS:'Air Dried Kangaroo Tail Coins',TREATS_KANG_001_LEGCUT:'Air Dried Kangaroo XL Jerky (PREMIUM CUT - LEG)',TREATS_BEEF_001:'Air Dried Beef Jerky',TREATS_BEEF_002:'Air Dried Beef Liver',TREATS_PORK_001:'Air Dried Pork Liver',TREATS_CHICK_001:'Air Dried Chicken Cubes',TREATS_KANG_001:'Air Dried Kangaroo Jerky',TREATS_DUCK_001:'Air Dried Duck Jerky',TREATS_PORK_002:'Air Dried Pork Jerky',TREATS_TURK_001:'Air Dried Turkey Jerky',TREATS_CROC_001:'Air Dried Crocodile Jerky',TREATS_DUCK_002:'Air Dried Duck Leg',TREATS_SEAF_001:'Air Dried Salmon Tail',TREATS_BEEF_003:'Air Dried Beef Trachea',TREATS_BEEF_004_Small:'Air Dried Beef Bone (Small)',TREATS_BEEF_004_Large:'Air Dried Beef Bone (Large)',TREATS_FRVG_001:'Freeze Dried Strawberries',TREATS_FRVG_002:'Freeze Dried Blueberries',TREATS_FRVG_003:'Freeze Dried Pumpkin',TREATS_FRVG_004:'Freeze Dried Purple Sweet Potato',TREATS_FRVG_005:'Freeze Dried Brussels Sprouts',TREATS_SEAF_002:'Freeze Dried Prawn',TREATS_RABB_001:'Air Dried Rabbit Ear (With Fur)',TREATS_RABB_002:'Air Dried Rabbit Front Leg',TREATS_SEAF_003:'Air Dried Shark Cartilage',TREATS_SEAF_004:'Freeze Dried Shishamo',TREATS_SEAF_005:'Freeze Dried Salmon',TREATS_OSTR_001:'Air Dried Ostrich Big Bone',TREATS_SEAF_006:'Freeze Dried Green Lipped Mussels',TREATS_SEAF_007:'Freeze Dried Giant Squid Legs',TREATS_CHICK_003:'Freeze Dried Chicken Breast Cubes',TREATS_CHICK_004:'Freeze Dried Chicken Breast Fillet',TREATS_DUCK_003:'Freeze Dried Duck Breast Cubes',TREATS_DUCK_004:'Freeze Dried Duck Breast Fillet',TREATS_SEAF_008:'Freeze Dried Cod Fish Cubes',TREATS_SEAF_009:'Freeze Dried Tuna Cubes',TREATS_FRVG_006:'Air Dried Sweet Potato',TREATS_BEEF_005:'Air Dried Cow Skin',TREATS_CHICK_006:'Air Dried Chicken Jerky',TREATS_DUCK_005:'Air Dried Duck Feet',TREATS_DUCK_006:'Air Dried Duck Neck',TREATS_CHICK_002:'Air Dried Chicken Feet',TREATS_CHICK_005:'Air Dried Chicken Neck',TREATS_CROC_002:'Air Dried Crocodile Tail',TREATS_CROC_003:'Air Dried Crocodile Feet',TREATS_PORK_005_Medium:'Air Dried Pig Ear (Medium)',TREATS_PORK_005_Jumbo:'Air Dried Pig Ear (Jumbo)',TREATS_PORK_004:'Air Dried Pig Ear Strips'};
+const NM={TREATS_BEEF_011:'Air Dried Beef Lung Puff',TREATS_NOVLVENI_002:'Air Dried Venison Jerky',TREATS_RABB_006:'Air Dried Rabbit Jerky',TREATS_KANG_002:'Air Dried Kangaroo Tail',TREATS_KANG_002_coins:'Air Dried Kangaroo Tail Coins',TREATS_KANG_001_legcut:'Air Dried Kangaroo XL Jerky (PREMIUM CUT - LEG)',TREATS_BEEF_001:'Air Dried Beef Jerky',TREATS_BEEF_002:'Air Dried Beef Liver',TREATS_PORK_001:'Air Dried Pork Liver',TREATS_CHICK_001:'Air Dried Chicken Cubes',TREATS_KANG_001:'Air Dried Kangaroo Jerky',TREATS_DUCK_001:'Air Dried Duck Jerky',TREATS_PORK_002:'Air Dried Pork Jerky',TREATS_TURK_001:'Air Dried Turkey Jerky',TREATS_CROC_001:'Air Dried Crocodile Jerky',TREATS_DUCK_002:'Air Dried Duck Leg',TREATS_SEAF_001:'Air Dried Salmon Tail',TREATS_BEEF_003:'Air Dried Beef Trachea',TREATS_BEEF_004_Small:'Air Dried Beef Bone (Small)',TREATS_BEEF_004_Large:'Air Dried Beef Bone (Large)',TREATS_FRVG_001:'Freeze Dried Strawberries',TREATS_FRVG_002:'Freeze Dried Blueberries',TREATS_FRVG_003:'Freeze Dried Pumpkin',TREATS_FRVG_004:'Freeze Dried Purple Sweet Potato',TREATS_FRVG_005:'Freeze Dried Brussels Sprouts',TREATS_SEAF_002:'Freeze Dried Prawn',TREATS_RABB_001:'Air Dried Rabbit Ear (With Fur)',TREATS_RABB_002:'Air Dried Rabbit Front Leg',TREATS_SEAF_003:'Air Dried Shark Cartilage',TREATS_SEAF_004:'Freeze Dried Shishamo',TREATS_SEAF_005:'Freeze Dried Salmon',TREATS_OSTR_001:'Air Dried Ostrich Big Bone',TREATS_SEAF_006:'Freeze Dried Green Lipped Mussels',TREATS_SEAF_007:'Freeze Dried Giant Squid Legs',TREATS_CHICK_003:'Freeze Dried Chicken Breast Cubes',TREATS_CHICK_004:'Freeze Dried Chicken Breast Fillet',TREATS_DUCK_003:'Freeze Dried Duck Breast Cubes',TREATS_DUCK_004:'Freeze Dried Duck Breast Fillet',TREATS_SEAF_008:'Freeze Dried Cod Fish Cubes',TREATS_SEAF_009:'Freeze Dried Tuna Cubes',TREATS_FRVG_006:'Air Dried Sweet Potato',TREATS_BEEF_005:'Air Dried Cow Skin',TREATS_CHICK_006:'Air Dried Chicken Jerky',TREATS_DUCK_005:'Air Dried Duck Feet',TREATS_DUCK_006:'Air Dried Duck Neck',TREATS_CHICK_002:'Air Dried Chicken Feet',TREATS_CHICK_005:'Air Dried Chicken Neck',TREATS_CROC_002:'Air Dried Crocodile Tail',TREATS_CROC_003:'Air Dried Crocodile Feet',TREATS_PORK_005_Medium:'Air Dried Pig Ear (Medium)',TREATS_PORK_005_Jumbo:'Air Dried Pig Ear (Jumbo)',TREATS_PORK_004:'Air Dried Pig Ear Strips',TREATS_NOVLQUAIL_001:'Freeze Dried Quail Egg Yolk',TREATS_CHICK_007:'Freeze Dried Egg Yolk Cubes',TREATS_PORK_006_braid15:'Air Dried Pork Pizzle (Braid 15cm)',TREATS_PORK_006_braid30:'Air Dried Pork Pizzle (Braid 30cm)',TREATS_PORK_006_spag:'Air Dried Pork Pizzle (Spaghetti)',TREATS_PORK_006_dnut:'Air Dried Pork Pizzle (Donuts)',TREATS_BEEF_006_thick15:'Air Dried Beef Pizzle (15cm Thick)',TREATS_BEEF_006_thin15:'Air Dried Beef Pizzle (15cm Thin)',TREATS_BEEF_006_thick30:'Air Dried Beef Pizzle (30cm Thick)',TREATS_BEEF_006_thin30:'Air Dried Beef Pizzle (30cm Thin)',TREATS_BEEF_006_braid30:'Air Dried Beef Pizzle (30cm TRIPLE Braided)',TREATS_BEEF_006_braid20:'Air Dried Beef Pizzle (20cm TRIPLE Braided)',TREATS_BEEF_006_braid10:'Air Dried Beef Pizzle (10cm TRIPLE Braided)',TREATS_BEEF_006_twist30:'Air Dried Beef Pizzle (30cm DOUBLE Twist)',TREATS_BEEF_006_twist20:'Air Dried Beef Pizzle (20cm DOUBLE Twist)',TREATS_BEEF_006_twist10:'Air Dried Beef Pizzle (10cm DOUBLE Twist)',TREATS_BEEF_007_small:'Air Dried Beef Tendon (Small 12cm)',TREATS_BEEF_007_large:'Air Dried Beef Tendon (Large 20-30cm)',TREATS_BEEF_007_twirl:'Air Dried Beef Tendon (Twirl)',TREATS_DUCK_007_flat:'Air Dried Duck Esophagus (Flat)',TREATS_DUCK_007_braid:'Air Dried Duck Esophagus (Braided)',TREATS_SEAF_010:'Air Dried Baby Pomfret',TREATS_DUCK_008:'Air Dried Duck Liver',TREATS_TURK_002:'Air Dried Turkey Neck',TREATS_DUCK_009:'Freeze Dried Duck Liver',TREATS_DUCK_010:'Freeze Dried Duck Heart',TREATS_CHICK_008:'Freeze Dried Chicken Liver',TREATS_CHICK_009:'Freeze Dried Chicken Heart',TREATS_BEEF_008:'Freeze Dried Beef Liver',TREATS_RABB_003:'Freeze Dried Rabbit Fillet',TREATS_RABB_004:'Freeze Dried Rabbit Heart',TREATS_RABB_005:'Freeze Dried Rabbit Liver',TREATS_NOVLVENI_001:'Freeze Dried Venison Cubes',TREATS_SEAF_008_fillet:'Freeze Dried Cod Fish Fillet',TREATS_NOVLQUAIL_002:'Freeze Dried Whole Quail',TREATS_DUCK_011:'Air Dried Duck Wings',TREATS_BEEF_009:'Freeze Dried Beef Green Tripe',TREATS_SEAF_011:'Freeze Dried Sardine',TREATS_BEEF_005_ring:'Air Dried Cow Skin (Ring)',TREATS_DUCK_001_cubes:'Air Dried Duck Breast Cubes',TREATS_SEAF_013:'Air Dried Cod Fish Skin (Rolls)',TREATS_SEAF_005_cubes:'Freeze Dried Salmon Cubes',TREATS_RABB_001_wofur:'Rabbit Ear (Without Fur)',TREATS_FRVG_004_cubes:'Freeze Dried Purple Sweet Potato Cubes',TREATS_FRVG_007:'Freeze Dried Carrot Cubes',TREATS_FRVG_001_cubes:'Freeze Dried Strawberry Cubes',TREATS_FRVG_008:'Freeze Dried Bell Peppers',TREATS_FRVG_009:'Freeze Dried Green Beans',TREATS_FRVG_010:'Freeze Dried Dragonfruit',TREATS_FRVG_011:'Freeze Dried Broccoli',TREATS_FRVG_012:'Freeze Dried Kale',TREATS_BEEF_010_small:'Air Dried Cow Ear (Small)',TREATS_BEEF_010_jumbo:'Air Dried Cow Ear (Jumbo)',TREATS_BEEF_010_strips:'Air Dried Cow Ear (Strips)',TREATS_NOVLFROG_001:'Freeze Dried Bull Frog'};
 const nm=s=>NM[s]||s;
 
-const SRC={TREATS_BEEF_011:'INHOUSE',TREATS_NOVLVENI_002:'INHOUSE',TREATS_RABB_006:'INHOUSE',TREATS_KANG_002_TAIL:'INHOUSE',TREATS_KANG_002_COINS:'INHOUSE',TREATS_KANG_001_LEGCUT:'INHOUSE',TREATS_DUCK_001:'CHINA',TREATS_DUCK_002:'CHINA',TREATS_BEEF_003:'CHINA',TREATS_BEEF_004_Small:'CHINA',TREATS_BEEF_004_Large:'CHINA',TREATS_RABB_001:'CHINA',TREATS_RABB_002:'CHINA',TREATS_SEAF_003:'CHINA',TREATS_OSTR_001:'CHINA',TREATS_SEAF_006:'CHINA',TREATS_SEAF_007:'CHINA',TREATS_SEAF_002:'CHINA',TREATS_SEAF_004:'CHINA',TREATS_SEAF_005:'CHINA',TREATS_FRVG_001:'CHINA',TREATS_FRVG_002:'CHINA',TREATS_FRVG_003:'CHINA',TREATS_FRVG_004:'CHINA',TREATS_FRVG_005:'CHINA',TREATS_SEAF_001:'CHINA',TREATS_CHICK_003:'CHINA',TREATS_CHICK_004:'CHINA',TREATS_DUCK_003:'CHINA',TREATS_DUCK_004:'CHINA',TREATS_SEAF_008:'CHINA',TREATS_SEAF_009:'CHINA',TREATS_FRVG_006:'CHINA',TREATS_BEEF_005:'CHINA',TREATS_CHICK_006:'CHINA',TREATS_BEEF_001:'INHOUSE',TREATS_BEEF_002:'INHOUSE',TREATS_PORK_001:'INHOUSE',TREATS_CHICK_001:'INHOUSE',TREATS_KANG_001:'INHOUSE',TREATS_TURK_001:'INHOUSE',TREATS_CROC_001:'INHOUSE',TREATS_PORK_002:'INHOUSE',TREATS_PORK_004:'INHOUSE',TREATS_CHICK_002:'INHOUSE',TREATS_DUCK_005:'INHOUSE',TREATS_DUCK_006:'INHOUSE',TREATS_CHICK_005:'INHOUSE',TREATS_CROC_002:'INHOUSE',TREATS_CROC_003:'INHOUSE',TREATS_PORK_005_Medium:'INHOUSE',TREATS_PORK_005_Jumbo:'INHOUSE'};
+const SRC={TREATS_BEEF_011:'INHOUSE',TREATS_NOVLVENI_002:'INHOUSE',TREATS_RABB_006:'INHOUSE',TREATS_KANG_002:'INHOUSE',TREATS_KANG_002_coins:'INHOUSE',TREATS_KANG_001_legcut:'INHOUSE',TREATS_DUCK_001:'CHINA',TREATS_DUCK_002:'CHINA',TREATS_BEEF_003:'CHINA',TREATS_BEEF_004_Small:'CHINA',TREATS_BEEF_004_Large:'CHINA',TREATS_RABB_001:'CHINA',TREATS_RABB_002:'CHINA',TREATS_SEAF_003:'CHINA',TREATS_OSTR_001:'CHINA',TREATS_SEAF_006:'CHINA',TREATS_SEAF_007:'CHINA',TREATS_SEAF_002:'CHINA',TREATS_SEAF_004:'CHINA',TREATS_SEAF_005:'CHINA',TREATS_FRVG_001:'CHINA',TREATS_FRVG_002:'CHINA',TREATS_FRVG_003:'CHINA',TREATS_FRVG_004:'CHINA',TREATS_FRVG_005:'CHINA',TREATS_SEAF_001:'CHINA',TREATS_CHICK_003:'CHINA',TREATS_CHICK_004:'CHINA',TREATS_DUCK_003:'CHINA',TREATS_DUCK_004:'CHINA',TREATS_SEAF_008:'CHINA',TREATS_SEAF_009:'CHINA',TREATS_FRVG_006:'CHINA',TREATS_BEEF_005:'CHINA',TREATS_CHICK_006:'CHINA',TREATS_BEEF_001:'INHOUSE',TREATS_BEEF_002:'INHOUSE',TREATS_PORK_001:'INHOUSE',TREATS_CHICK_001:'INHOUSE',TREATS_KANG_001:'INHOUSE',TREATS_TURK_001:'INHOUSE',TREATS_CROC_001:'INHOUSE',TREATS_PORK_002:'INHOUSE',TREATS_PORK_004:'INHOUSE',TREATS_CHICK_002:'INHOUSE',TREATS_DUCK_005:'INHOUSE',TREATS_DUCK_006:'INHOUSE',TREATS_CHICK_005:'INHOUSE',TREATS_CROC_002:'INHOUSE',TREATS_CROC_003:'INHOUSE',TREATS_PORK_005_Medium:'INHOUSE',TREATS_PORK_005_Jumbo:'INHOUSE',TREATS_NOVLQUAIL_001:'CHINA',TREATS_CHICK_007:'CHINA',TREATS_PORK_006_braid15:'CHINA',TREATS_PORK_006_braid30:'CHINA',TREATS_PORK_006_spag:'CHINA',TREATS_PORK_006_dnut:'CHINA',TREATS_BEEF_006_thick15:'CHINA',TREATS_BEEF_006_thin15:'CHINA',TREATS_BEEF_006_thick30:'CHINA',TREATS_BEEF_006_thin30:'CHINA',TREATS_BEEF_006_braid30:'CHINA',TREATS_BEEF_006_braid20:'CHINA',TREATS_BEEF_006_braid10:'CHINA',TREATS_BEEF_006_twist30:'CHINA',TREATS_BEEF_006_twist20:'CHINA',TREATS_BEEF_006_twist10:'CHINA',TREATS_BEEF_007_small:'CHINA',TREATS_BEEF_007_large:'CHINA',TREATS_BEEF_007_twirl:'CHINA',TREATS_DUCK_007_flat:'CHINA',TREATS_DUCK_007_braid:'CHINA',TREATS_SEAF_010:'CHINA',TREATS_DUCK_008:'CHINA',TREATS_TURK_002:'CHINA',TREATS_DUCK_009:'CHINA',TREATS_DUCK_010:'CHINA',TREATS_CHICK_008:'CHINA',TREATS_CHICK_009:'CHINA',TREATS_BEEF_008:'CHINA',TREATS_RABB_003:'CHINA',TREATS_RABB_004:'CHINA',TREATS_RABB_005:'CHINA',TREATS_NOVLVENI_001:'CHINA',TREATS_SEAF_008_fillet:'CHINA',TREATS_NOVLQUAIL_002:'CHINA',TREATS_DUCK_011:'CHINA',TREATS_BEEF_009:'CHINA',TREATS_SEAF_011:'CHINA',TREATS_BEEF_005_ring:'CHINA',TREATS_DUCK_001_cubes:'CHINA',TREATS_SEAF_013:'CHINA',TREATS_SEAF_005_cubes:'CHINA',TREATS_RABB_001_wofur:'CHINA',TREATS_FRVG_004_cubes:'CHINA',TREATS_FRVG_007:'CHINA',TREATS_FRVG_001_cubes:'CHINA',TREATS_FRVG_008:'CHINA',TREATS_FRVG_009:'CHINA',TREATS_FRVG_010:'CHINA',TREATS_FRVG_011:'CHINA',TREATS_FRVG_012:'CHINA',TREATS_BEEF_010_small:'CHINA',TREATS_BEEF_010_jumbo:'CHINA',TREATS_BEEF_010_strips:'CHINA',TREATS_NOVLFROG_001:'CHINA'};
 
-const UOM={TREATS_BEEF_011:'g',TREATS_NOVLVENI_002:'g',TREATS_RABB_006:'g',TREATS_KANG_002_TAIL:'pcs',TREATS_KANG_002_COINS:'g',TREATS_KANG_001_LEGCUT:'g',TREATS_BEEF_001:'g',TREATS_BEEF_002:'g',TREATS_PORK_001:'g',TREATS_KANG_001:'g',TREATS_DUCK_001:'g',TREATS_PORK_002:'g',TREATS_TURK_001:'g',TREATS_CROC_001:'g',TREATS_DUCK_002:'pcs',TREATS_BEEF_003:'g',TREATS_BEEF_004_Small:'pcs',TREATS_BEEF_004_Large:'pcs',TREATS_RABB_001:'g',TREATS_RABB_002:'pcs',TREATS_SEAF_003:'g',TREATS_OSTR_001:'pcs',TREATS_SEAF_006:'g',TREATS_SEAF_007:'pcs',TREATS_CHICK_001:'g',TREATS_SEAF_002:'g',TREATS_SEAF_004:'g',TREATS_SEAF_005:'g',TREATS_FRVG_001:'g',TREATS_FRVG_002:'g',TREATS_FRVG_003:'g',TREATS_FRVG_004:'g',TREATS_FRVG_005:'g',TREATS_SEAF_001:'g',TREATS_PORK_004:'g',TREATS_CHICK_002:'g',TREATS_CHICK_003:'g',TREATS_CHICK_004:'g',TREATS_DUCK_003:'g',TREATS_DUCK_004:'g',TREATS_SEAF_008:'g',TREATS_SEAF_009:'g',TREATS_FRVG_006:'g',TREATS_BEEF_005:'pcs',TREATS_DUCK_005:'g',TREATS_DUCK_006:'g',TREATS_CHICK_005:'g',TREATS_CROC_002:'pcs',TREATS_CROC_003:'pcs',TREATS_CHICK_006:'g',TREATS_PORK_005_Medium:'pcs',TREATS_PORK_005_Jumbo:'pcs'};
+const UOM={TREATS_BEEF_011:'g',TREATS_NOVLVENI_002:'g',TREATS_RABB_006:'g',TREATS_KANG_002:'pcs',TREATS_KANG_002_coins:'g',TREATS_KANG_001_legcut:'g',TREATS_BEEF_001:'g',TREATS_BEEF_002:'g',TREATS_PORK_001:'g',TREATS_KANG_001:'g',TREATS_DUCK_001:'g',TREATS_PORK_002:'g',TREATS_TURK_001:'g',TREATS_CROC_001:'g',TREATS_DUCK_002:'pcs',TREATS_BEEF_003:'g',TREATS_BEEF_004_Small:'pcs',TREATS_BEEF_004_Large:'pcs',TREATS_RABB_001:'g',TREATS_RABB_002:'pcs',TREATS_SEAF_003:'g',TREATS_OSTR_001:'pcs',TREATS_SEAF_006:'g',TREATS_SEAF_007:'pcs',TREATS_CHICK_001:'g',TREATS_SEAF_002:'g',TREATS_SEAF_004:'g',TREATS_SEAF_005:'g',TREATS_FRVG_001:'g',TREATS_FRVG_002:'g',TREATS_FRVG_003:'g',TREATS_FRVG_004:'g',TREATS_FRVG_005:'g',TREATS_SEAF_001:'g',TREATS_PORK_004:'g',TREATS_CHICK_002:'g',TREATS_CHICK_003:'g',TREATS_CHICK_004:'g',TREATS_DUCK_003:'g',TREATS_DUCK_004:'g',TREATS_SEAF_008:'g',TREATS_SEAF_009:'g',TREATS_FRVG_006:'g',TREATS_BEEF_005:'pcs',TREATS_DUCK_005:'g',TREATS_DUCK_006:'g',TREATS_CHICK_005:'g',TREATS_CROC_002:'pcs',TREATS_CROC_003:'pcs',TREATS_CHICK_006:'g',TREATS_PORK_005_Medium:'pcs',TREATS_PORK_005_Jumbo:'pcs',TREATS_NOVLQUAIL_001:'g',TREATS_CHICK_007:'g',TREATS_PORK_006_braid15:'pcs',TREATS_PORK_006_braid30:'pcs',TREATS_PORK_006_spag:'g',TREATS_PORK_006_dnut:'pcs',TREATS_BEEF_006_thick15:'pcs',TREATS_BEEF_006_thin15:'pcs',TREATS_BEEF_006_thick30:'pcs',TREATS_BEEF_006_thin30:'pcs',TREATS_BEEF_006_braid30:'pcs',TREATS_BEEF_006_braid20:'pcs',TREATS_BEEF_006_braid10:'pcs',TREATS_BEEF_006_twist30:'pcs',TREATS_BEEF_006_twist20:'pcs',TREATS_BEEF_006_twist10:'pcs',TREATS_BEEF_007_small:'pcs',TREATS_BEEF_007_large:'pcs',TREATS_BEEF_007_twirl:'pcs',TREATS_DUCK_007_flat:'pcs',TREATS_DUCK_007_braid:'pcs',TREATS_SEAF_010:'pcs',TREATS_DUCK_008:'g',TREATS_TURK_002:'pcs',TREATS_DUCK_009:'g',TREATS_DUCK_010:'g',TREATS_CHICK_008:'g',TREATS_CHICK_009:'g',TREATS_BEEF_008:'g',TREATS_RABB_003:'g',TREATS_RABB_004:'g',TREATS_RABB_005:'g',TREATS_NOVLVENI_001:'g',TREATS_SEAF_008_fillet:'g',TREATS_NOVLQUAIL_002:'g',TREATS_DUCK_011:'g',TREATS_BEEF_009:'g',TREATS_SEAF_011:'g',TREATS_BEEF_005_ring:'pcs',TREATS_DUCK_001_cubes:'g',TREATS_SEAF_013:'g',TREATS_SEAF_005_cubes:'g',TREATS_RABB_001_wofur:'g',TREATS_FRVG_004_cubes:'g',TREATS_FRVG_007:'g',TREATS_FRVG_001_cubes:'g',TREATS_FRVG_008:'g',TREATS_FRVG_009:'g',TREATS_FRVG_010:'g',TREATS_FRVG_011:'g',TREATS_FRVG_012:'g',TREATS_BEEF_010_small:'pcs',TREATS_BEEF_010_jumbo:'pcs',TREATS_BEEF_010_strips:'g',TREATS_NOVLFROG_001:'g'};
 
 // Sales-SKU variants that roll up into one production family. The live sales feed
 // still sends the package-level SKU + per-pack UOM, but stock / burn / production
 // planning should operate on the combined treat family shown in the product master.
 const SKU_ALIAS={
-  TREATS_BEEF_011_S:'TREATS_BEEF_011',TREATS_BEEF_011_M:'TREATS_BEEF_011',TREATS_BEEF_011_L:'TREATS_BEEF_011',
-  TREATS_NOVLVENI_002_S:'TREATS_NOVLVENI_002',TREATS_NOVLVENI_002_M:'TREATS_NOVLVENI_002',TREATS_NOVLVENI_002_L:'TREATS_NOVLVENI_002',
-  TREATS_RABB_006_S:'TREATS_RABB_006',TREATS_RABB_006_M:'TREATS_RABB_006',TREATS_RABB_006_L:'TREATS_RABB_006',
-  TREATS_KANG_002_M:'TREATS_KANG_002_TAIL',
-  TREATS_KANG_002_M_coins:'TREATS_KANG_002_COINS',TREATS_KANG_002_L_coins:'TREATS_KANG_002_COINS',
-  TREATS_KANG_001_S_legcut:'TREATS_KANG_001_LEGCUT',TREATS_KANG_001_M_legcut:'TREATS_KANG_001_LEGCUT',TREATS_KANG_001_L_legcut:'TREATS_KANG_001_LEGCUT'
+  TREATS_NOVLQUAIL_001_S:'TREATS_NOVLQUAIL_001',TREATS_NOVLQUAIL_001_M:'TREATS_NOVLQUAIL_001',TREATS_NOVLQUAIL_001_L:'TREATS_NOVLQUAIL_001',TREATS_CHICK_007_S:'TREATS_CHICK_007',
+  TREATS_CHICK_007_M:'TREATS_CHICK_007',TREATS_CHICK_007_L:'TREATS_CHICK_007',TREATS_PORK_006_S_braid15:'TREATS_PORK_006_braid15',TREATS_PORK_006_M_braid15:'TREATS_PORK_006_braid15',
+  TREATS_PORK_006_L_braid15:'TREATS_PORK_006_braid15',TREATS_PORK_006_M_braid30:'TREATS_PORK_006_braid30',TREATS_PORK_006_L_braid30:'TREATS_PORK_006_braid30',TREATS_PORK_006_S_spag:'TREATS_PORK_006_spag',
+  TREATS_PORK_006_M_spag:'TREATS_PORK_006_spag',TREATS_PORK_006_L_spag:'TREATS_PORK_006_spag',TREATS_PORK_006_S_dnut:'TREATS_PORK_006_dnut',TREATS_PORK_006_M_dnut:'TREATS_PORK_006_dnut',
+  TREATS_PORK_006_L_dnut:'TREATS_PORK_006_dnut',TREATS_BEEF_006_S_thick15:'TREATS_BEEF_006_thick15',TREATS_BEEF_006_M_thick15:'TREATS_BEEF_006_thick15',TREATS_BEEF_006_L_thick15:'TREATS_BEEF_006_thick15',
+  TREATS_BEEF_006_S_thin15:'TREATS_BEEF_006_thin15',TREATS_BEEF_006_M_thin15:'TREATS_BEEF_006_thin15',TREATS_BEEF_006_L_thin15:'TREATS_BEEF_006_thin15',TREATS_BEEF_006_L_thick30:'TREATS_BEEF_006_thick30',
+  TREATS_BEEF_006_M_thin30:'TREATS_BEEF_006_thin30',TREATS_BEEF_006_L_thin30:'TREATS_BEEF_006_thin30',TREATS_BEEF_006_L_braid30:'TREATS_BEEF_006_braid30',TREATS_BEEF_006_L_braid20:'TREATS_BEEF_006_braid20',
+  TREATS_BEEF_006_M_braid10:'TREATS_BEEF_006_braid10',TREATS_BEEF_006_L_braid10:'TREATS_BEEF_006_braid10',TREATS_BEEF_006_L_twist30:'TREATS_BEEF_006_twist30',TREATS_BEEF_006_M_twist20:'TREATS_BEEF_006_twist20',
+  TREATS_BEEF_006_L_twist20:'TREATS_BEEF_006_twist20',TREATS_BEEF_006_M_twist10:'TREATS_BEEF_006_twist10',TREATS_BEEF_006_L_twist10:'TREATS_BEEF_006_twist10',TREATS_BEEF_007_S_small:'TREATS_BEEF_007_small',
+  TREATS_BEEF_007_M_small:'TREATS_BEEF_007_small',TREATS_BEEF_007_L_small:'TREATS_BEEF_007_small',TREATS_BEEF_007_M_large:'TREATS_BEEF_007_large',TREATS_BEEF_007_L_large:'TREATS_BEEF_007_large',
+  TREATS_BEEF_007_S_twirl:'TREATS_BEEF_007_twirl',TREATS_BEEF_007_M_twirl:'TREATS_BEEF_007_twirl',TREATS_BEEF_007_L_twirl:'TREATS_BEEF_007_twirl',TREATS_DUCK_007_S_flat:'TREATS_DUCK_007_flat',
+  TREATS_DUCK_007_M_flat:'TREATS_DUCK_007_flat',TREATS_DUCK_007_L_flat:'TREATS_DUCK_007_flat',TREATS_DUCK_007_S_braid:'TREATS_DUCK_007_braid',TREATS_DUCK_007_M_braid:'TREATS_DUCK_007_braid',
+  TREATS_DUCK_007_L_braid:'TREATS_DUCK_007_braid',TREATS_SEAF_010_S:'TREATS_SEAF_010',TREATS_SEAF_010_M:'TREATS_SEAF_010',TREATS_SEAF_010_L:'TREATS_SEAF_010',
+  TREATS_DUCK_008_S:'TREATS_DUCK_008',TREATS_DUCK_008_M:'TREATS_DUCK_008',TREATS_DUCK_008_L:'TREATS_DUCK_008',TREATS_TURK_002_S:'TREATS_TURK_002',
+  TREATS_TURK_002_M:'TREATS_TURK_002',TREATS_TURK_002_L:'TREATS_TURK_002',TREATS_DUCK_009_S:'TREATS_DUCK_009',TREATS_DUCK_009_M:'TREATS_DUCK_009',
+  TREATS_DUCK_009_L:'TREATS_DUCK_009',TREATS_DUCK_010_S:'TREATS_DUCK_010',TREATS_DUCK_010_M:'TREATS_DUCK_010',TREATS_DUCK_010_L:'TREATS_DUCK_010',
+  TREATS_CHICK_008_S:'TREATS_CHICK_008',TREATS_CHICK_008_M:'TREATS_CHICK_008',TREATS_CHICK_008_L:'TREATS_CHICK_008',TREATS_CHICK_009_S:'TREATS_CHICK_009',
+  TREATS_CHICK_009_M:'TREATS_CHICK_009',TREATS_CHICK_009_L:'TREATS_CHICK_009',TREATS_BEEF_008_S:'TREATS_BEEF_008',TREATS_BEEF_008_M:'TREATS_BEEF_008',
+  TREATS_BEEF_008_L:'TREATS_BEEF_008',TREATS_RABB_003_S:'TREATS_RABB_003',TREATS_RABB_003_M:'TREATS_RABB_003',TREATS_RABB_003_L:'TREATS_RABB_003',
+  TREATS_RABB_004_S:'TREATS_RABB_004',TREATS_RABB_004_M:'TREATS_RABB_004',TREATS_RABB_004_L:'TREATS_RABB_004',TREATS_RABB_005_S:'TREATS_RABB_005',
+  TREATS_RABB_005_M:'TREATS_RABB_005',TREATS_RABB_005_L:'TREATS_RABB_005',TREATS_NOVLVENI_001_S:'TREATS_NOVLVENI_001',TREATS_NOVLVENI_001_M:'TREATS_NOVLVENI_001',
+  TREATS_NOVLVENI_001_L:'TREATS_NOVLVENI_001',TREATS_SEAF_008_S_fillet:'TREATS_SEAF_008_fillet',TREATS_SEAF_008_M_fillet:'TREATS_SEAF_008_fillet',TREATS_SEAF_008_L_fillet:'TREATS_SEAF_008_fillet',
+  TREATS_NOVLQUAIL_002_S:'TREATS_NOVLQUAIL_002',TREATS_NOVLQUAIL_002_M:'TREATS_NOVLQUAIL_002',TREATS_DUCK_011_S:'TREATS_DUCK_011',TREATS_DUCK_011_M:'TREATS_DUCK_011',
+  TREATS_DUCK_011_L:'TREATS_DUCK_011',TREATS_BEEF_009_S:'TREATS_BEEF_009',TREATS_BEEF_009_M:'TREATS_BEEF_009',TREATS_BEEF_009_L:'TREATS_BEEF_009',
+  TREATS_SEAF_011_S:'TREATS_SEAF_011',TREATS_SEAF_011_M:'TREATS_SEAF_011',TREATS_SEAF_011_L:'TREATS_SEAF_011',TREATS_BEEF_005_S_ring:'TREATS_BEEF_005_ring',
+  TREATS_BEEF_005_M_ring:'TREATS_BEEF_005_ring',TREATS_BEEF_005_L_ring:'TREATS_BEEF_005_ring',TREATS_DUCK_001_S_cubes:'TREATS_DUCK_001_cubes',TREATS_DUCK_001_M_cubes:'TREATS_DUCK_001_cubes',
+  TREATS_DUCK_001_L_cubes:'TREATS_DUCK_001_cubes',TREATS_SEAF_013_S:'TREATS_SEAF_013',TREATS_SEAF_013_M:'TREATS_SEAF_013',TREATS_SEAF_013_L:'TREATS_SEAF_013',
+  TREATS_SEAF_005_S_cubes:'TREATS_SEAF_005_cubes',TREATS_SEAF_005_M_cubes:'TREATS_SEAF_005_cubes',TREATS_SEAF_005_L_cubes:'TREATS_SEAF_005_cubes',TREATS_RABB_001_S_wofur:'TREATS_RABB_001_wofur',
+  TREATS_RABB_001_M_wofur:'TREATS_RABB_001_wofur',TREATS_RABB_001_L_wofur:'TREATS_RABB_001_wofur',TREATS_FRVG_004_S_cubes:'TREATS_FRVG_004_cubes',TREATS_FRVG_004_M_cubes:'TREATS_FRVG_004_cubes',
+  TREATS_FRVG_004_L_cubes:'TREATS_FRVG_004_cubes',TREATS_FRVG_007_S:'TREATS_FRVG_007',TREATS_FRVG_007_M:'TREATS_FRVG_007',TREATS_FRVG_007_L:'TREATS_FRVG_007',
+  TREATS_FRVG_001_S_cubes:'TREATS_FRVG_001_cubes',TREATS_FRVG_001_M_cubes:'TREATS_FRVG_001_cubes',TREATS_FRVG_001_L_cubes:'TREATS_FRVG_001_cubes',TREATS_FRVG_008_S:'TREATS_FRVG_008',
+  TREATS_FRVG_008_M:'TREATS_FRVG_008',TREATS_FRVG_008_L:'TREATS_FRVG_008',TREATS_FRVG_009_S:'TREATS_FRVG_009',TREATS_FRVG_009_M:'TREATS_FRVG_009',
+  TREATS_FRVG_009_L:'TREATS_FRVG_009',TREATS_FRVG_010_S:'TREATS_FRVG_010',TREATS_FRVG_010_M:'TREATS_FRVG_010',TREATS_FRVG_010_L:'TREATS_FRVG_010',
+  TREATS_FRVG_011_S:'TREATS_FRVG_011',TREATS_FRVG_011_M:'TREATS_FRVG_011',TREATS_FRVG_011_L:'TREATS_FRVG_011',TREATS_FRVG_012_S:'TREATS_FRVG_012',
+  TREATS_FRVG_012_M:'TREATS_FRVG_012',TREATS_BEEF_010_S_small:'TREATS_BEEF_010_small',TREATS_BEEF_010_M_small:'TREATS_BEEF_010_small',TREATS_BEEF_010_L_small:'TREATS_BEEF_010_small',
+  TREATS_BEEF_010_M_jumbo:'TREATS_BEEF_010_jumbo',TREATS_BEEF_010_L_jumbo:'TREATS_BEEF_010_jumbo',TREATS_BEEF_010_S_strips:'TREATS_BEEF_010_strips',TREATS_BEEF_010_M_strips:'TREATS_BEEF_010_strips',
+  TREATS_BEEF_010_L_strips:'TREATS_BEEF_010_strips',TREATS_BEEF_011_S:'TREATS_BEEF_011',TREATS_BEEF_011_M:'TREATS_BEEF_011',TREATS_BEEF_011_L:'TREATS_BEEF_011',
+  TREATS_NOVLVENI_002_S:'TREATS_NOVLVENI_002',TREATS_NOVLVENI_002_M:'TREATS_NOVLVENI_002',TREATS_NOVLVENI_002_L:'TREATS_NOVLVENI_002',TREATS_NOVLFROG_001_S:'TREATS_NOVLFROG_001',
+  TREATS_NOVLFROG_001_M:'TREATS_NOVLFROG_001',TREATS_NOVLFROG_001_L:'TREATS_NOVLFROG_001',TREATS_RABB_006_S:'TREATS_RABB_006',TREATS_RABB_006_M:'TREATS_RABB_006',
+  TREATS_RABB_006_L:'TREATS_RABB_006',TREATS_KANG_002_M:'TREATS_KANG_002',TREATS_KANG_002_M_coins:'TREATS_KANG_002_coins',TREATS_KANG_002_L_coins:'TREATS_KANG_002_coins',
+  TREATS_KANG_001_S_legcut:'TREATS_KANG_001_legcut',TREATS_KANG_001_M_legcut:'TREATS_KANG_001_legcut',TREATS_KANG_001_L_legcut:'TREATS_KANG_001_legcut'
 };
 // These new in-house families are registered for stock + sales aggregation now, but
 // automatic production scheduling is intentionally held until their real production
 // parameters (raw-to-finished yield, kg/door or pcs/door, dehydration hours + temp)
 // are supplied. Do not guess production physics from another treat.
-const PROD_SETUP_PENDING=new Set(['TREATS_BEEF_011','TREATS_NOVLVENI_002','TREATS_RABB_006','TREATS_KANG_002_TAIL','TREATS_KANG_002_COINS','TREATS_KANG_001_LEGCUT']);
+const PROD_SETUP_PENDING=new Set(['TREATS_BEEF_011','TREATS_NOVLVENI_002','TREATS_RABB_006','TREATS_KANG_002','TREATS_KANG_002_coins','TREATS_KANG_001_legcut']);
+// ─── New-listing launch model (13 Oct 2026) ───────────────────────────────
+// All families in the uploaded 13/10 product master are tracked from launch. New
+// listings deliberately do NOT inherit mature-SKU assumptions immediately:
+//   • before the first sale: no automatic reorder / production quantity;
+//   • first 42 days: cumulative launch-day average includes zero-sale operating days,
+//     so slow discovery at launch is represented rather than ignored;
+//   • after enough launch days exist, only half of confirmed acceleration is applied,
+//     capped at +25%, so genuine pickup is recognised without extrapolating a tiny
+//     first-week sample into a runaway order;
+//   • recurring N.N / one-off campaign days are excluded from the organic launch rate
+//     and provisioned separately by the normal sale-uplift layer.
+// Five families were confirmed live from the week beginning 5 Oct 2026. Every other
+// newly listed family has a fixed official launch date of 15 Oct 2026. This is deliberate:
+// zero-sale operating days after official launch must count toward sellability, rather than
+// moving the launch clock forward to the first sale and making a slow SKU look healthier.
+const NEW_LISTING_SKUS=new Set(['TREATS_NOVLQUAIL_001','TREATS_CHICK_007','TREATS_PORK_006_braid15','TREATS_PORK_006_braid30','TREATS_PORK_006_spag','TREATS_PORK_006_dnut','TREATS_BEEF_006_thick15','TREATS_BEEF_006_thin15','TREATS_BEEF_006_thick30','TREATS_BEEF_006_thin30','TREATS_BEEF_006_braid30','TREATS_BEEF_006_braid20','TREATS_BEEF_006_braid10','TREATS_BEEF_006_twist30','TREATS_BEEF_006_twist20','TREATS_BEEF_006_twist10','TREATS_BEEF_007_small','TREATS_BEEF_007_large','TREATS_BEEF_007_twirl','TREATS_DUCK_007_flat','TREATS_DUCK_007_braid','TREATS_SEAF_010','TREATS_DUCK_008','TREATS_TURK_002','TREATS_DUCK_009','TREATS_DUCK_010','TREATS_CHICK_008','TREATS_CHICK_009','TREATS_BEEF_008','TREATS_RABB_003','TREATS_RABB_004','TREATS_RABB_005','TREATS_NOVLVENI_001','TREATS_SEAF_008_fillet','TREATS_NOVLQUAIL_002','TREATS_DUCK_011','TREATS_BEEF_009','TREATS_SEAF_011','TREATS_BEEF_005_ring','TREATS_DUCK_001_cubes','TREATS_SEAF_013','TREATS_SEAF_005_cubes','TREATS_RABB_001_wofur','TREATS_FRVG_004_cubes','TREATS_FRVG_007','TREATS_FRVG_001_cubes','TREATS_FRVG_008','TREATS_FRVG_009','TREATS_FRVG_010','TREATS_FRVG_011','TREATS_FRVG_012','TREATS_BEEF_010_small','TREATS_BEEF_010_jumbo','TREATS_BEEF_010_strips','TREATS_BEEF_011','TREATS_NOVLVENI_002','TREATS_NOVLFROG_001','TREATS_RABB_006','TREATS_KANG_002','TREATS_KANG_002_coins','TREATS_KANG_001_legcut']);
+const DEFAULT_NEW_LISTING_LAUNCH='2026-10-15';
+const LAUNCH_START={
+  TREATS_KANG_002:'2026-10-05',
+  TREATS_KANG_002_coins:'2026-10-05',
+  TREATS_BEEF_011:'2026-10-05',
+  TREATS_RABB_006:'2026-10-05',
+  TREATS_NOVLVENI_002:'2026-10-05'
+};
+const LAUNCH_RAMP_DAYS=42;
+const LAUNCH_MIN_TRAJ_DAYS=8;
+const LAUNCH_TRAJ_FACTOR=0.50;
+const LAUNCH_TRAJ_CAP=25;
+
 
 // Buffer per pack (grams UOM only — pcs are accurate)
-let BUFFER={TREATS_BEEF_001:2,TREATS_BEEF_002:2,TREATS_PORK_001:2,TREATS_KANG_001:2,TREATS_DUCK_001:2,TREATS_PORK_002:2,TREATS_TURK_001:2,TREATS_CROC_001:2,TREATS_BEEF_003:3,TREATS_RABB_001:3,TREATS_SEAF_003:3,TREATS_SEAF_006:2,TREATS_CHICK_001:1.5,TREATS_FRVG_002:1.5,TREATS_FRVG_003:1,TREATS_FRVG_004:2,TREATS_SEAF_004:1,TREATS_SEAF_002:3,TREATS_SEAF_001:3,TREATS_FRVG_001:3,TREATS_FRVG_005:2,TREATS_SEAF_005:2.5,TREATS_PORK_004:3,TREATS_CHICK_002:3,TREATS_CHICK_003:2,TREATS_CHICK_004:2,TREATS_DUCK_003:2,TREATS_DUCK_004:2,TREATS_SEAF_008:2,TREATS_SEAF_009:2,TREATS_FRVG_006:4,TREATS_DUCK_005:3,TREATS_DUCK_006:3,TREATS_CHICK_005:3,TREATS_CHICK_006:3};
+let BUFFER={TREATS_BEEF_001:2,TREATS_BEEF_002:2,TREATS_PORK_001:2,TREATS_KANG_001:2,TREATS_DUCK_001:2,TREATS_PORK_002:2,TREATS_TURK_001:2,TREATS_CROC_001:2,TREATS_BEEF_003:3,TREATS_RABB_001:3,TREATS_SEAF_003:3,TREATS_SEAF_006:2,TREATS_CHICK_001:1.5,TREATS_FRVG_002:1.5,TREATS_FRVG_003:1,TREATS_FRVG_004:2,TREATS_SEAF_004:1,TREATS_SEAF_002:3,TREATS_SEAF_001:3,TREATS_FRVG_001:3,TREATS_FRVG_005:2,TREATS_SEAF_005:2.5,TREATS_PORK_004:3,TREATS_CHICK_002:3,TREATS_CHICK_003:2,TREATS_CHICK_004:2,TREATS_DUCK_003:2,TREATS_DUCK_004:2,TREATS_SEAF_008:2,TREATS_SEAF_009:2,TREATS_FRVG_006:4,TREATS_DUCK_005:3,TREATS_DUCK_006:3,TREATS_CHICK_005:3,TREATS_CHICK_006:3,TREATS_NOVLQUAIL_001:2,TREATS_CHICK_007:2,TREATS_PORK_006_braid15:0,TREATS_PORK_006_braid30:0,TREATS_PORK_006_spag:3,TREATS_PORK_006_dnut:0,TREATS_BEEF_006_thick15:0,TREATS_BEEF_006_thin15:0,TREATS_BEEF_006_thick30:0,TREATS_BEEF_006_thin30:0,TREATS_BEEF_006_braid30:0,TREATS_BEEF_006_braid20:0,TREATS_BEEF_006_braid10:0,TREATS_BEEF_006_twist30:0,TREATS_BEEF_006_twist20:0,TREATS_BEEF_006_twist10:0,TREATS_BEEF_007_small:0,TREATS_BEEF_007_large:0,TREATS_BEEF_007_twirl:0,TREATS_DUCK_007_flat:0,TREATS_DUCK_007_braid:0,TREATS_SEAF_010:0,TREATS_DUCK_008:2,TREATS_TURK_002:0,TREATS_DUCK_009:2,TREATS_DUCK_010:2,TREATS_CHICK_008:2,TREATS_CHICK_009:2,TREATS_BEEF_008:2,TREATS_RABB_003:2,TREATS_RABB_004:2,TREATS_RABB_005:2,TREATS_NOVLVENI_001:2,TREATS_SEAF_008_fillet:2,TREATS_NOVLQUAIL_002:3,TREATS_DUCK_011:2,TREATS_BEEF_009:2,TREATS_SEAF_011:3,TREATS_BEEF_005_ring:0,TREATS_DUCK_001_cubes:2,TREATS_SEAF_013:3,TREATS_SEAF_005_cubes:2,TREATS_RABB_001_wofur:3,TREATS_FRVG_004_cubes:1,TREATS_FRVG_007:1,TREATS_FRVG_001_cubes:1,TREATS_FRVG_008:2,TREATS_FRVG_009:2,TREATS_FRVG_010:1,TREATS_FRVG_011:1,TREATS_FRVG_012:1,TREATS_BEEF_010_small:0,TREATS_BEEF_010_jumbo:0,TREATS_BEEF_010_strips:2,TREATS_BEEF_011:2,TREATS_NOVLVENI_002:2,TREATS_NOVLFROG_001:3,TREATS_RABB_006:2,TREATS_KANG_002:0,TREATS_KANG_002_coins:3,TREATS_KANG_001_legcut:2};
 
 // Wastage multiplier applied to recommended order quantities (sea + air + next-cycle).
 // Captures inventory loss not visible in sales — e.g. powdering of fragile freeze-dried items,
@@ -416,7 +480,7 @@ const MANUAL_LOCK_SKUS=new Set();
 let SEASONAL={};
 // ─── Recurring monthly sale events (the N.N promos: 2.2, 3.3, … 11.11, 12.12) ───
 // Each N.N sale creates a 1–3 day demand spike that lands on the date AND on the
-// Monday the weekend batch is processed. Left inside the 4-week average it inflates
+// the following operating day(s) when weekend orders are processed. Left inside the 4-week average it inflates
 // the burn rate and over-sizes sea/air orders; pulled out and provisioned as a
 // scheduled event it's covered without distorting the ongoing rate.
 //   • SALE_CALENDAR — sale dates as [month, day]. Default = the "Nth of month N" pattern.
@@ -436,7 +500,7 @@ let SEASONAL={};
 // for the coverage window via expectedUplift — "spike vs spike", not baked into the ongoing
 // rate. Add festival dates here too (e.g. [1,29] CNY eve) as you learn their per-SKU uplift.
 let SALE_CALENDAR=[[1,1],[2,2],[3,3],[4,4],[5,5],[6,6],[7,7],[8,8],[9,9],[10,10],[11,11],[12,12]];
-let SALE_WINDOW={pre:1,post:2};   // strip the N.N date + Monday-batch smear (tighter than the old 2/3)
+let SALE_WINDOW={preOps:1,postOps:2};   // actual N.N day + neighbouring OPERATING days; Sundays/PH do not consume the tail
 let SALE_UPLIFT_EVENTS=3;
 // One-time / special campaigns you'll flag manually. EXCLUDED from the base burn rate so
 // they don't inflate it, and NOT provisioned as recurring uplift (that's SALE_CALENDAR's job).
@@ -565,7 +629,7 @@ const LONG_MIX_MAX_FILL=1.10;
 // chicken feet, duck feet, duck neck, chicken neck, crocodile feet.
 const AFTERNOON_PROCESS_OK=new Set(['TREATS_CHICK_002','TREATS_DUCK_005','TREATS_DUCK_006','TREATS_CHICK_005','TREATS_CROC_003']);
 
-const STOCK={TREATS_BEEF_011:0,TREATS_NOVLVENI_002:0,TREATS_RABB_006:0,TREATS_KANG_002_TAIL:0,TREATS_KANG_002_COINS:0,TREATS_KANG_001_LEGCUT:0,TREATS_BEEF_001:12962,TREATS_BEEF_002:1271,TREATS_PORK_001:3922,TREATS_CHICK_001:8759,TREATS_KANG_001:11396,TREATS_DUCK_001:52850,TREATS_PORK_002:43046,TREATS_TURK_001:4014,TREATS_CROC_001:8679,TREATS_DUCK_002:45,TREATS_SEAF_001:1240,TREATS_BEEF_003:945,TREATS_BEEF_004_Small:18,TREATS_BEEF_004_Large:8,TREATS_FRVG_001:1965,TREATS_FRVG_002:1594,TREATS_FRVG_003:0,TREATS_FRVG_004:334,TREATS_FRVG_005:0,TREATS_SEAF_002:1652,TREATS_RABB_001:4444,TREATS_RABB_002:52,TREATS_SEAF_003:1891,TREATS_SEAF_004:3622,TREATS_SEAF_005:3565,TREATS_OSTR_001:6,TREATS_SEAF_006:0,TREATS_SEAF_007:54,TREATS_CHICK_003:2744,TREATS_CHICK_004:3402,TREATS_DUCK_003:324,TREATS_DUCK_004:3413,TREATS_SEAF_008:734,TREATS_SEAF_009:524,TREATS_FRVG_006:0,TREATS_BEEF_005:100,TREATS_CHICK_006:4635,TREATS_DUCK_005:4986,TREATS_DUCK_006:2048,TREATS_CHICK_002:3067,TREATS_CHICK_005:6233,TREATS_CROC_002:59,TREATS_CROC_003:22,TREATS_PORK_005_Medium:50,TREATS_PORK_005_Jumbo:41,TREATS_PORK_004:3683};
+const STOCK={TREATS_BEEF_011:0,TREATS_NOVLVENI_002:0,TREATS_RABB_006:0,TREATS_KANG_002:0,TREATS_KANG_002_coins:0,TREATS_KANG_001_legcut:0,TREATS_BEEF_001:12962,TREATS_BEEF_002:1271,TREATS_PORK_001:3922,TREATS_CHICK_001:8759,TREATS_KANG_001:11396,TREATS_DUCK_001:52850,TREATS_PORK_002:43046,TREATS_TURK_001:4014,TREATS_CROC_001:8679,TREATS_DUCK_002:45,TREATS_SEAF_001:1240,TREATS_BEEF_003:945,TREATS_BEEF_004_Small:18,TREATS_BEEF_004_Large:8,TREATS_FRVG_001:1965,TREATS_FRVG_002:1594,TREATS_FRVG_003:0,TREATS_FRVG_004:334,TREATS_FRVG_005:0,TREATS_SEAF_002:1652,TREATS_RABB_001:4444,TREATS_RABB_002:52,TREATS_SEAF_003:1891,TREATS_SEAF_004:3622,TREATS_SEAF_005:3565,TREATS_OSTR_001:6,TREATS_SEAF_006:0,TREATS_SEAF_007:54,TREATS_CHICK_003:2744,TREATS_CHICK_004:3402,TREATS_DUCK_003:324,TREATS_DUCK_004:3413,TREATS_SEAF_008:734,TREATS_SEAF_009:524,TREATS_FRVG_006:0,TREATS_BEEF_005:100,TREATS_CHICK_006:4635,TREATS_DUCK_005:4986,TREATS_DUCK_006:2048,TREATS_CHICK_002:3067,TREATS_CHICK_005:6233,TREATS_CROC_002:59,TREATS_CROC_003:22,TREATS_PORK_005_Medium:50,TREATS_PORK_005_Jumbo:41,TREATS_PORK_004:3683,TREATS_NOVLQUAIL_001:0,TREATS_CHICK_007:0,TREATS_PORK_006_braid15:0,TREATS_PORK_006_braid30:0,TREATS_PORK_006_spag:0,TREATS_PORK_006_dnut:0,TREATS_BEEF_006_thick15:0,TREATS_BEEF_006_thin15:0,TREATS_BEEF_006_thick30:0,TREATS_BEEF_006_thin30:0,TREATS_BEEF_006_braid30:0,TREATS_BEEF_006_braid20:0,TREATS_BEEF_006_braid10:0,TREATS_BEEF_006_twist30:0,TREATS_BEEF_006_twist20:0,TREATS_BEEF_006_twist10:0,TREATS_BEEF_007_small:0,TREATS_BEEF_007_large:0,TREATS_BEEF_007_twirl:0,TREATS_DUCK_007_flat:0,TREATS_DUCK_007_braid:0,TREATS_SEAF_010:0,TREATS_DUCK_008:0,TREATS_TURK_002:0,TREATS_DUCK_009:0,TREATS_DUCK_010:0,TREATS_CHICK_008:0,TREATS_CHICK_009:0,TREATS_BEEF_008:0,TREATS_RABB_003:0,TREATS_RABB_004:0,TREATS_RABB_005:0,TREATS_NOVLVENI_001:0,TREATS_SEAF_008_fillet:0,TREATS_NOVLQUAIL_002:0,TREATS_DUCK_011:0,TREATS_BEEF_009:0,TREATS_SEAF_011:0,TREATS_BEEF_005_ring:0,TREATS_DUCK_001_cubes:0,TREATS_SEAF_013:0,TREATS_SEAF_005_cubes:0,TREATS_RABB_001_wofur:0,TREATS_FRVG_004_cubes:0,TREATS_FRVG_007:0,TREATS_FRVG_001_cubes:0,TREATS_FRVG_008:0,TREATS_FRVG_009:0,TREATS_FRVG_010:0,TREATS_FRVG_011:0,TREATS_FRVG_012:0,TREATS_BEEF_010_small:0,TREATS_BEEF_010_jumbo:0,TREATS_BEEF_010_strips:0,TREATS_NOVLFROG_001:0};
 const CLOSING_DATE=new Date('2026-05-09');
 const CHINA_WKS=6,IH_WKS=4,SEA_LEAD=35,AIR_LEAD=10,MFR_LEAD=10,ORDER_TRIGGER=0.85,MAX_DOORS=7;
 // Per-SKU extra manufacturing lead (days), ADDED on top of the normal sea/air lead.
@@ -738,35 +802,86 @@ function getDateRangeFromPicker(){return{from:isoToDashDMY(document.getElementBy
 function initDateRangePicker(){document.getElementById('rangeFrom').value=SALES_SINCE;document.getElementById('rangeTo').value=dKey(today())}
 function refreshDashboard(){const{from,to}=getDateRangeFromPicker();init(from,to)}
 // ─── Recurring-sale-event helpers ───────────────────────────────────────────
-// Roll an N.N calendar anchor forward to the business day its spike actually posts on.
-// Orders over a weekend (or that would post on a public holiday) batch to the next working
-// day — e.g. 8.8 (Sat) → Sun → Mon 10/08 (National Day PH) → posts Tue 11/08. Business day =
-// Mon–Fri and not a public holiday. This keeps the sale-strip window on the real spike.
-function effectiveSaleDay(anchor){ let d=new Date(anchor.getFullYear(),anchor.getMonth(),anchor.getDate());
-  let guard=0; while((d.getDay()===0||d.getDay()===6||isPH(d))&&guard++<14){ d=addDays(d,1); } return d; }
-// A calendar day is "sale-affected" if it falls within SALE_WINDOW of any N.N sale's EFFECTIVE (posted) day.
-function isSaleDay(d){ if(!SALE_CALENDAR.length)return false; const y=d.getFullYear();
-  for(let yy=y-1;yy<=y+1;yy++){ for(const [mm,dd] of SALE_CALENDAR){ const eff=effectiveSaleDay(new Date(yy,mm-1,dd)); const diff=Math.round((d-eff)/86400000); if(diff>=-SALE_WINDOW.pre&&diff<=SALE_WINDOW.post)return true; } } return false; }
+// Historical review showed that N.N demand follows OPERATING days, not fixed calendar
+// offsets: a Saturday N.N can spike on Saturday and again on the next operating day,
+// while a midweek N.N often stays elevated for the next 1–2 operating days. Sundays
+// (and PH closure days) must therefore not "use up" the post-sale tail.
+function isOperatingSaleDay(d){return d.getDay()!==0&&!isPH(d);}
+function stepOperatingDay(d,dir){
+  let x=new Date(d),guard=0;
+  do{x=addDays(x,dir);}while(!isOperatingSaleDay(x)&&guard++<14);
+  return x;
+}
+function saleWindowDates(anchor){
+  const out=[];
+  const a=new Date(anchor.getFullYear(),anchor.getMonth(),anchor.getDate());
+  if(isOperatingSaleDay(a))out.push(a);
+  // previous operating days
+  let p=a;
+  for(let i=0;i<SALE_WINDOW.preOps;i++){p=stepOperatingDay(p,-1);out.unshift(p);}
+  // subsequent operating days. If anchor itself is closed, the first next operating
+  // day is the first post day; otherwise it is day +1 in operating-day terms.
+  let q=a;
+  for(let i=0;i<SALE_WINDOW.postOps;i++){q=stepOperatingDay(q,1);out.push(q);}
+  return out;
+}
+// Provision the event on the first operating day on/after the actual N.N anchor.
+// Saturday remains Saturday; Sunday/PH rolls forward.
+function effectiveSaleDay(anchor){
+  let d=new Date(anchor.getFullYear(),anchor.getMonth(),anchor.getDate()),guard=0;
+  while(!isOperatingSaleDay(d)&&guard++<14)d=addDays(d,1);
+  return d;
+}
+function isSaleDay(d){
+  if(!SALE_CALENDAR.length)return false;
+  const k=dKey(d),y=d.getFullYear();
+  for(let yy=y-1;yy<=y+1;yy++){
+    for(const [mm,dd] of SALE_CALENDAR){
+      const win=saleWindowDates(new Date(yy,mm-1,dd));
+      if(win.some(x=>dKey(x)===k))return true;
+    }
+  }
+  return false;
+}
 // A one-time/special campaign day (user-flagged) — excluded from the base rate, not provisioned.
 function isCampaignDay(d,sku){ if(!CAMPAIGN_ONETIME.length)return false; const k=dKey(d);
   for(const c of CAMPAIGN_ONETIME){ if(c===k)return true; if(sku&&c===sku+'|'+k)return true; } return false; }
-// Day-offsets (from today) of upcoming sale ANCHOR dates within horizonDays (each counted once).
+// Day-offsets (from today) of upcoming N.N events within horizonDays (each counted once).
 function saleOffsetsAhead(horizonDays){ if(!SALE_CALENDAR.length)return []; const t0=today(),offs=new Set();
-  for(let yy=t0.getFullYear();yy<=t0.getFullYear()+2;yy++){ for(const [mm,dd] of SALE_CALENDAR){ const eff=effectiveSaleDay(new Date(yy,mm-1,dd)); const off=daysBetween(t0,eff); if(off>=1&&off<=horizonDays)offs.add(off); } } return [...offs].sort((a,b)=>a-b); }
-// Auto-measure per-event uplift for one SKU from its loaded daily history. Each event:
-// (sale-window demand) − (local pre-window baseline/day × window days), clamped ≥0.
-// Returns array oldest→newest; caller averages the most-recent SALE_UPLIFT_EVENTS.
+  for(let yy=t0.getFullYear();yy<=t0.getFullYear()+2;yy++){ for(const [mm,dd] of SALE_CALENDAR){
+    const eff=effectiveSaleDay(new Date(yy,mm-1,dd)); const off=daysBetween(t0,eff);
+    if(off>=1&&off<=horizonDays)offs.add(off);
+  } } return [...offs].sort((a,b)=>a-b); }
+// Auto-measure per-event uplift for one SKU. Event demand is the actual N.N operating
+// window (one prior operating day + N.N + two subsequent operating days), minus a local
+// pre-event normal baseline. This avoids a Sunday/PH shortening the sale tail.
 function measureUplifts(sku,dayData){ if(!SALE_CALENDAR.length)return [];
   const keys=Object.keys(dayData); if(!keys.length)return [];
   const ds=keys.map(k=>{const[y,m,d]=k.split('-').map(Number);return new Date(y,m-1,d);}).sort((a,b)=>a-b);
   const first=ds[0],last=ds[ds.length-1],anchors=[];
-  for(let y=first.getFullYear();y<=last.getFullYear();y++){ for(const [mm,dd] of SALE_CALENDAR){ const a=effectiveSaleDay(new Date(y,mm-1,dd)); if(a>=first&&a<=last)anchors.push(a); } }
+  for(let y=first.getFullYear();y<=last.getFullYear();y++){ for(const [mm,dd] of SALE_CALENDAR){
+    const a=new Date(y,mm-1,dd); const win=saleWindowDates(a);
+    if(win.some(x=>x>=first&&x<=last))anchors.push(a);
+  } }
   anchors.sort((a,b)=>a-b); const ups=[];
-  for(const a of anchors){ if(addDays(a,SALE_WINDOW.post)>last)continue;   // skip incomplete current event
-    let winDem=0,winDays=0; for(let off=-SALE_WINDOW.pre;off<=SALE_WINDOW.post;off++){ const wd=addDays(a,off); if(wd.getDay()===0||isPH(wd))continue; winDem+=dayData[dKey(wd)]||0; winDays++; }
-    let baseDem=0,baseDays=0; for(let off=-(SALE_WINDOW.pre+14);off<-SALE_WINDOW.pre;off++){ const d=addDays(a,off); if(d.getDay()===0||isPH(d)||isSaleDay(d))continue; baseDem+=dayData[dKey(d)]||0; baseDays++; }
-    if(baseDays<5)continue; const baseDaily=baseDem/baseDays; ups.push(Math.max(0,winDem-baseDaily*winDays)); }
-  return ups; }
+  for(const a of anchors){
+    const win=saleWindowDates(a).filter(d=>isOperatingSaleDay(d));
+    if(!win.length||win[win.length-1]>last)continue; // incomplete current event
+    let winDem=0; for(const wd of win)winDem+=dayData[dKey(wd)]||0;
+    const firstWin=win[0];
+    let baseDem=0,baseDays=0,d=firstWin;
+    while(baseDays<12){
+      d=stepOperatingDay(d,-1);
+      if(isSaleDay(d)||isCampaignDay(d,sku)||isOosDay(sku,d))continue;
+      baseDem+=dayData[dKey(d)]||0; baseDays++;
+      if(daysBetween(first,d)<-120)break;
+    }
+    if(baseDays<5)continue;
+    const baseDaily=baseDem/baseDays;
+    ups.push(Math.max(0,winDem-baseDaily*win.length));
+  }
+  return ups;
+}
 
 async function init(fromDate,toDate){
   if(fromDate===undefined||toDate===undefined){const range=getDateRangeFromPicker();fromDate=range.from;toDate=range.to}
@@ -1128,6 +1243,54 @@ function adaptiveBurnRate(sku,dayData){
 }
 
 
+// Early-life demand model for newly listed SKUs. Unlike the mature adaptive model,
+// this includes every eligible operating day since launch (including zero-sale days).
+// That deliberately keeps the first weeks conservative while customer discovery ramps.
+function launchBurnRate(sku,dayData){
+  if(!NEW_LISTING_SKUS.has(sku))return null;
+  const t=today();
+  const launchDate=LAUNCH_START[sku]||DEFAULT_NEW_LISTING_LAUNCH;
+  const start=new Date(launchDate);
+  start.setHours(0,0,0,0);
+  if(t<start)return {base:0,cls:'launch-pre',density:0,win:LAUNCH_RAMP_DAYS,used:0,
+    latestWeek:0,recentThird:0,olderRest:0,prelaunch:true,launchStart:dKey(start),launchAgeDays:0,
+    launchEligibleDays:0};
+  const age=Math.max(0,daysBetween(start,t));
+  if(age>LAUNCH_RAMP_DAYS)return null; // graduate to the mature model after six weeks
+
+  const vals=[];
+  for(let d=new Date(start);d<=t;d=addDays(d,1)){
+    if(d.getDay()===0||isOosDay(sku,d)||isSaleDay(d)||isCampaignDay(d,sku))continue;
+    vals.push(dayData[dKey(d)]||0); // zero-sale launch days intentionally count
+  }
+  if(!vals.length)return {base:0,cls:'launch',density:0,win:LAUNCH_RAMP_DAYS,used:0,
+    latestWeek:0,recentThird:0,olderRest:0,prelaunch:false,launchStart:dKey(start),
+    launchAgeDays:age,launchEligibleDays:0};
+
+  const base=_mean(vals);
+  const recentN=Math.min(6,Math.max(3,Math.floor(vals.length/2)));
+  const recentVals=vals.slice(-recentN);
+  const olderVals=vals.slice(0,Math.max(0,vals.length-recentN));
+  const recent=_mean(recentVals);
+  const older=olderVals.length?_mean(olderVals):base;
+  const last3=_mean(vals.slice(-Math.min(3,vals.length)));
+  return {base,cls:'launch',density:vals.filter(v=>v>0).length/vals.length,win:LAUNCH_RAMP_DAYS,
+    used:vals.length,latestWeek:last3,recentThird:recent,olderRest:older,
+    prelaunch:false,launchStart:dKey(start),launchAgeDays:age,launchEligibleDays:vals.length};
+}
+
+function gatedLaunchTraj(br){
+  if(!br||br.prelaunch)return {pct:0,pattern:'new-sku',rawPct:0};
+  if(br.used<LAUNCH_MIN_TRAJ_DAYS||br.olderRest<=0)return {pct:0,pattern:'launch-partial',rawPct:0};
+  const rawPct=(br.recentThird/br.olderRest-1)*100;
+  if(rawPct>5&&br.latestWeek>=br.base){
+    return {pct:Math.min(LAUNCH_TRAJ_CAP,rawPct*LAUNCH_TRAJ_FACTOR),pattern:'launch-rising',rawPct};
+  }
+  if(rawPct<-5)return {pct:0,pattern:'launch-falling',rawPct}; // never suppress the launch base
+  return {pct:0,pattern:'launch-flat',rawPct};
+}
+
+
 // Long-horizon burn model for UOM==='pcs'. Weekly buckets are too noisy for piece SKUs,
 // so use the latest three COMPLETE calendar months. Recurring N.N sale windows and OOS
 // days are stripped here exactly like the weekly model; their uplift is provisioned
@@ -1281,9 +1444,12 @@ function computeStats(){
     let autoMa,traj,trajPattern,trajRawPct,oosActive=isOos;
     const monthSeries=monthlyRates(dayData,sku);   // display only
     const isPieceSku=UOM[sku]==='pcs';
-    const br=isPieceSku?pieceBurnRate(sku,dayData):adaptiveBurnRate(sku,dayData);
+    const launchBr=launchBurnRate(sku,dayData);
+    const isLaunch=!!launchBr;
+    const isPrelaunch=!!(launchBr&&launchBr.prelaunch);
+    const br=launchBr||(isPieceSku?pieceBurnRate(sku,dayData):adaptiveBurnRate(sku,dayData));
     const baseDaily=br.base;
-    const tj=isPieceSku?gatedPieceTraj(br):gatedTraj(br);
+    const tj=isLaunch?gatedLaunchTraj(br):(isPieceSku?gatedPieceTraj(br):gatedTraj(br));
     traj=tj.pct; trajPattern=tj.pattern; trajRawPct=tj.rawPct||0;
     // Weekly MA is a 6-day selling week (Mon-Sat). Sundays carry no forecast demand.
     autoMa=baseDaily*6;
@@ -1302,7 +1468,9 @@ function computeStats(){
     const autoDaily=autoMa/6;
     const trajAdjDaily=autoDaily*(1+Math.max(0,traj)/100);
     const manualDaily=useManual?manualMa/6:0;
-    const adjDaily=Math.max(0.01,autoDaily,trajAdjDaily,manualDaily);
+    // Pre-launch new listings stay at zero demand until their fixed official launch date.
+    // This prevents dozens of not-yet-live SKUs from generating meaningless 1-unit orders.
+    const adjDaily=isPrelaunch?0:Math.max(0.01,autoDaily,trajAdjDaily,manualDaily);
 
     // Which input "won" the MAX — used to label the burn rate inline
     let burnSource;
@@ -1407,6 +1575,11 @@ function computeStats(){
       prdLogs.filter(l=>l.sku===sku&&passConfIn(l.time)).reduce((a,l)=>a+l.qty,0)+
       orphanedAdj;
     const currentStock=Math.max(0,baseStock+confIn-soldSince);
+    // New listings need one real inventory anchor before reorder/production QTY is trustworthy.
+    // A stocktake, receipt or production entry is enough; otherwise sales can be tracked but
+    // automatic replenishment is held instead of assuming the zero seed is real stock.
+    const stockInitialized=!NEW_LISTING_SKUS.has(sku)||(STOCK[sku]||0)>0||
+      fullStocktakes.length>0||rcvLogs.some(l=>l.sku===sku)||prdLogs.some(l=>l.sku===sku);
     const pendSeaOrders=src==='CHINA'?seaOrders.filter(o=>o.sku===sku&&!o.received&&o.qty):[];
     const pendAirOrders=src==='CHINA'?airOrders.filter(o=>o.sku===sku&&!o.received):[];
     const pendAirShipped=pendAirOrders.filter(o=>o.shipped).reduce((a,o)=>a+(o.qty||0),0);
@@ -1438,7 +1611,7 @@ function computeStats(){
     const safetyQty=isSlow?0:Math.ceil(baseBurnBetween(0,SAFETY_WKS*7));
 
     let orderDecision=null;
-    if(src==='CHINA'){
+    if(src==='CHINA'&&!isPrelaunch&&stockInitialized){
       // ─── Time-aware simulation ────────────────────────────────────────
       // We need to project stock forward through each pending arrival chronologically
       // not just lump everything into "effective stock today"
@@ -1749,7 +1922,7 @@ function computeStats(){
       
       orderDecision={orderByDate,orderByDays,seaOrderQty,seaOrderQtyGross,pendingSeaWarehouseQty,isSlow,safetyQty,airNeeded,airBridgeDays,airIsViable,airGaps,urgency,leadDays,airLeadTotal,threshQty,thresh,orderTriggerQty,stockAtArrivalToday,effectiveStock,stockoutDate,earliestSeaEta,weeksOnHandEff,hasMfrLead,seaTopupShortfall,seaTopupOrderByDays,seaTopupOrderByDate,seaTopupQty,stockAfterAllPending,firstPendingSea,lastPendingDay,nextCycleOrderByDays,nextCycleOrderByDate,nextCycleOrderQty,nextCycleOrderQtyGross,nextCycleDayBelowThresh,nextCycleStockoutDay};
     }
-    const prodNeeded=src==='INHOUSE'?Math.max(0,threshQty-currentStock):0;
+    const prodNeeded=src==='INHOUSE'&&!isPrelaunch&&stockInitialized?Math.max(0,threshQty-currentStock):0;
     const weeksOnHand=adjDaily>0?currentStock/(adjDaily*6):99;
     // Days until current stock runs out (used for production prioritization
     // and the inventory tab's "days left" column).
@@ -1759,8 +1932,8 @@ function computeStats(){
     const skuStub={sku,threshQty,adjDaily};
     const sessionsTopup=src==='INHOUSE'&&DEHY[sku]?sessionsToTopupFromZero(skuStub):0;
     const trigWks=src==='INHOUSE'&&DEHY[sku]?ihTriggerWeeks(skuStub):IH_HEALTHY_WKS;
-    const ihHealthy=src==='INHOUSE'&&weeksOnHand>=trigWks;
-    skuStats[sku]={sku,src,isSlow,safetyQty,wkTotals,ma,autoMa,manualMa:useManual?manualMa:null,useManual,useLocked,lockedForecast:useLocked?lockedForecast:null,daily,traj,trajPattern,trajRawPct,burnSource,adjDaily,thresh,threshQty,orderTriggerQty,currentStock,effectiveStock,weeksOnHand,daysTillStockout,prodNeeded,soldSince,confIn,oosActive,seaOnly,orderDecision,pendSeaOrders,pendAirOrders,ihHealthy,sessionsTopup,trigWks,buffer:BUFFER[sku]||0,expectedUplift,upliftEventsUsed,despiked,wkBase,monthSeries,burnClass:br.cls,burnWin:br.win,burnDensity:br.density,burnWinUsed:br.used,latestWeekRate:br.latestWeek,recentThirdRate:br.recentThird,olderRestRate:br.olderRest,pieceMonths:br.pieceMonths||[],lockReleasedByReceipt};
+    const ihHealthy=src==='INHOUSE'&&!isPrelaunch&&stockInitialized&&weeksOnHand>=trigWks;
+    skuStats[sku]={sku,src,isSlow,safetyQty,wkTotals,ma,autoMa,manualMa:useManual?manualMa:null,useManual,useLocked,lockedForecast:useLocked?lockedForecast:null,daily,traj,trajPattern,trajRawPct,burnSource,adjDaily,thresh,threshQty,orderTriggerQty,currentStock,effectiveStock,weeksOnHand,daysTillStockout,prodNeeded,soldSince,confIn,oosActive,seaOnly,orderDecision,pendSeaOrders,pendAirOrders,ihHealthy,sessionsTopup,trigWks,buffer:BUFFER[sku]||0,expectedUplift,upliftEventsUsed,despiked,wkBase,monthSeries,burnClass:br.cls,burnWin:br.win,burnDensity:br.density,burnWinUsed:br.used,latestWeekRate:br.latestWeek,recentThirdRate:br.recentThird,olderRestRate:br.olderRest,pieceMonths:br.pieceMonths||[],lockReleasedByReceipt,isNewListing:NEW_LISTING_SKUS.has(sku),isPrelaunch,stockInitialized,launchStart:br.launchStart||null,launchAgeDays:br.launchAgeDays||0,launchEligibleDays:br.launchEligibleDays||0};
   });
   updateCards();buildAlerts();
 }
@@ -1844,6 +2017,11 @@ function buildAlerts(){
   // Overdue shipments
   seaOrders.filter(o=>!o.received&&o.qty&&o.eta).forEach(o=>{const dL=daysBetween(t,new Date(o.eta));if(dL<0)alerts.push({type:'danger',msg:`<strong>${nm(o.sku)}</strong> sea shipment overdue ${Math.abs(dL)}d — confirm received?`});else if(dL<=2)alerts.push({type:'warning',msg:`<strong>${nm(o.sku)}</strong> arriving in ${dL}d`});});
   airOrders.filter(o=>!o.received&&o.shipped&&o.eta).forEach(o=>{const dL=daysBetween(t,new Date(o.eta));if(dL<0)alerts.push({type:'danger',msg:`<strong>${nm(o.sku)}</strong> air shipment overdue ${Math.abs(dL)}d (due ${fmtDate(new Date(o.eta))}) — confirm received or chase forwarder · excluded from forecast until logged`});else if(dL<=1)alerts.push({type:'warning',msg:`<strong>${nm(o.sku)}</strong> air arriving ${dL===0?'today':'tomorrow'}`});});
+  // New listings can learn sales immediately, but replenishment waits for one real
+  // stock baseline so the zero seed cannot masquerade as physical stock.
+  Object.values(skuStats).filter(s=>s.isNewListing&&!s.isPrelaunch&&!s.stockInitialized).forEach(s=>{
+    alerts.push({type:'warning',msg:`🆕 <strong>${nm(s.sku)}</strong> is live and sales are being learned, but stock is not initialized — log a stocktake / receipt${s.src==='INHOUSE'?' / production':''} before trusting reorder or production quantity.`});
+  });
   // Air needed (viable only)
   Object.values(skuStats).filter(s=>s.orderDecision&&s.orderDecision.urgency==='air_needed').forEach(s=>{
     const skip=skips.find(sk=>sk.type==='air'&&sk.sku===s.sku&&withinWeek(sk.date));
@@ -3680,6 +3858,16 @@ function renderProduction(){
 function buildTrajTag(s){
   const uomT=UOM[s.sku]||'g';
   const mseries=(s.monthSeries||[]).slice(-5).map(m=>`${m.ym.slice(5)} ${fmt(Math.round(m.perDay))}${m.complete?'':'*'}`).join(' → ');
+  if(s.burnClass==='launch-pre'){
+    return `<span title="new listing · scheduled launch ${s.launchStart||DEFAULT_NEW_LISTING_LAUNCH} · demand forecasting starts from that fixed launch date so zero-sale days count toward sellability" style="font-size:9px;color:var(--text3);opacity:.7;margin-left:4px;cursor:help">prelaunch</span>`;
+  }
+  if(s.burnClass==='launch'){
+    const rising=s.trajPattern==='launch-rising'&&s.traj>0;
+    const lbl=rising?`launch ↑+${Math.round(s.traj)}%`:'launch';
+    const col=rising?'var(--orange)':'var(--blue)';
+    const tip=`new-listing ramp (${s.launchEligibleDays} eligible operating days since ${s.launchStart||DEFAULT_NEW_LISTING_LAUNCH})\nbase = cumulative launch average INCLUDING zero-sale days, excluding N.N/campaign/OOS days: ${fmtRate(s.autoMa/6,uomT)}${uomT}/d\nrecent launch rate ${fmtRate(s.recentThirdRate,uomT)}${uomT}/d · older ${fmtRate(s.olderRestRate,uomT)}${uomT}/d${rising?`\ntrajectory: raw +${Math.round(s.trajRawPct)}% × ${LAUNCH_TRAJ_FACTOR}, capped +${LAUNCH_TRAJ_CAP}% → +${Math.round(s.traj)}%`:'\ntrajectory: not applied yet / not confirmed'}\nlaunch model graduates after ${LAUNCH_RAMP_DAYS} days`;
+    return `<span title="${tip}" style="font-size:9px;color:${col};border:1px solid ${col};padding:1px 4px;border-radius:2px;margin-left:4px;cursor:help">${lbl}</span>`;
+  }
   if(s.burnClass==='piece-monthly'){
     const pm=(s.pieceMonths||[]).map(m=>`${m.ym.slice(5)} ${fmt(Math.round(m.total))}pc (${m.rate.toFixed(2)}/d)`).join(' → ');
     const rising=s.trajPattern==='rising';
@@ -3726,9 +3914,10 @@ function renderInventory(){
     const maTag=r.useManual?`<span title="manual MA: ${r.manualMa}/wk (auto would be ${Math.round(r.autoMa)}/wk)" style="font-size:9px;color:var(--blue);border:1px solid var(--blue);padding:1px 4px;border-radius:2px;margin-left:4px">M</span>`:'';
     const trajTag=buildTrajTag(r);
     const burnStr=`${fmtRate(r.adjDaily,uomT)}${uomT}/d${maTag}${trajTag}`;
-    h+=`<tr><td><span style="font-weight:500">${nm(r.sku)}</span><span class="sn">${r.sku}</span></td><td>${sb}</td><td style="font-family:var(--mono);color:var(--text3)">${bufStr}</td><td style="font-family:var(--mono)">${burnStr}</td><td style="font-family:var(--mono)">${fmt(closing)}</td><td class="n-dim" style="font-family:var(--mono)">-${fmt(r.soldSince)}</td><td style="font-family:var(--mono);color:var(--green)">${r.confIn>0?'+'+fmt(r.confIn):'—'}</td><td style="font-family:var(--mono);font-weight:600">${fmt(r.currentStock)}</td><td class="${dc}" style="font-family:var(--mono)">${dL>=999?'∞':dL+'d'}</td><td style="font-size:11px;color:var(--text3);font-family:var(--mono)">${pStr}</td></tr>`;
+    const stockStr=r.isNewListing&&!r.stockInitialized?'<span title="log a stocktake / receipt before replenishment qty is enabled" style="color:var(--yellow)">not set</span>':fmt(r.currentStock);
+    h+=`<tr><td><span style="font-weight:500">${nm(r.sku)}</span><span class="sn">${r.sku}</span></td><td>${sb}</td><td style="font-family:var(--mono);color:var(--text3)">${bufStr}</td><td style="font-family:var(--mono)">${burnStr}</td><td style="font-family:var(--mono)">${fmt(closing)}</td><td class="n-dim" style="font-family:var(--mono)">-${fmt(r.soldSince)}</td><td style="font-family:var(--mono);color:var(--green)">${r.confIn>0?'+'+fmt(r.confIn):'—'}</td><td style="font-family:var(--mono);font-weight:600">${stockStr}</td><td class="${dc}" style="font-family:var(--mono)">${r.isNewListing&&!r.stockInitialized?'—':(dL>=999?'∞':dL+'d')}</td><td style="font-size:11px;color:var(--text3);font-family:var(--mono)">${pStr}</td></tr>`;
   });
-  h+='</tbody></table></div><div class="note">current = closing 9 May − sold since (live, includes per-pack buffer) + confirmed IN · burn rate = 4-week MA with trajectory boost (hover the tag for breakdown) · click "show sales breakdown" above to verify exact deductions</div>';
+  h+='</tbody></table></div><div class="note">current = closing 9 May − sold since (live, includes per-pack buffer) + confirmed IN · burn rate = adaptive recent/launch model with trajectory boost (hover the tag for breakdown) · click "show sales breakdown" above to verify exact deductions</div>';
   document.getElementById('invContent').innerHTML=h;
 }
 
