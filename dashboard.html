@@ -380,11 +380,11 @@ const PROD_SETUP_PENDING=new Set(['TREATS_BEEF_011','TREATS_NOVLVENI_002','TREAT
 // All families in the uploaded 13/10 product master are tracked from launch. New
 // listings deliberately do NOT inherit mature-SKU assumptions immediately:
 //   • before the first sale: no automatic reorder / production quantity;
-//   • first 42 days: cumulative launch-day average includes zero-sale operating days,
-//     so slow discovery at launch is represented rather than ignored;
-//   • after enough launch days exist, only half of confirmed acceleration is applied,
-//     capped at +25%, so genuine pickup is recognised without extrapolating a tiny
-//     first-week sample into a runaway order;
+//   • while mature history is still building, cumulative launch-day average includes
+//     zero-sale operating days, so slow discovery is represented rather than ignored;
+//   • from 4 eligible selling days onward, weekly sell-through of the physical stock
+//     anchor assigns a +0/+10/+20/+30% launch uplift; a sharp recent slowdown drops
+//     the SKU one tier;
 //   • recurring N.N / one-off campaign days are excluded from the organic launch rate
 //     and provisioned separately by the normal sale-uplift layer.
 // Five families were confirmed live from the week beginning 5 Oct 2026. Every other
@@ -400,10 +400,19 @@ const LAUNCH_START={
   TREATS_RABB_006:'2026-10-05',
   TREATS_NOVLVENI_002:'2026-10-05'
 };
-const LAUNCH_RAMP_DAYS=42;
-const LAUNCH_MIN_TRAJ_DAYS=8;
-const LAUNCH_TRAJ_FACTOR=0.50;
-const LAUNCH_TRAJ_CAP=25;
+// Launch SKUs do NOT graduate on a hard calendar day. They remain on the launch
+// model until the mature model has the history it actually needs:
+//   grams: 6 complete weeks (dense), 7 (medium), or 9 (sparse)
+//   pieces: 3 complete calendar months.
+// This prevents a slow/OOS launch from becoming "mature" just because time passed.
+const LAUNCH_MIN_UPLIFT_DAYS=4;
+const LAUNCH_SLOWDOWN_RATIO=0.75;
+const LAUNCH_UPLIFT_TIERS=[
+  {minWeeklySellThrough:15,uplift:30,label:'breakout'},
+  {minWeeklySellThrough:10,uplift:20,label:'strong'},
+  {minWeeklySellThrough:5,uplift:10,label:'healthy'},
+  {minWeeklySellThrough:0,uplift:0,label:'slow'}
+];
 
 
 // Buffer per pack (grams UOM only — pcs are accurate)
@@ -1252,27 +1261,92 @@ function adaptiveBurnRate(sku,dayData){
 
 // Early-life demand model for newly listed SKUs. Unlike the mature adaptive model,
 // this includes every eligible operating day since launch (including zero-sale days).
-// That deliberately keeps the first weeks conservative while customer discovery ramps.
+// It is REORDERABLE FROM WEEK ONE: once sales exist, the normal lead-time stock
+// simulation uses this launch burn immediately. Sell-through tier changes HOW MUCH
+// demand we plan for; the existing lead-time + safety logic decides WHEN to reorder.
+function matureHistoryStatus(sku,dayData,start){
+  const t=today();
+  if(UOM[sku]==='pcs'){
+    // Piece model requires COMPLETE post-launch calendar months. A partial launch month
+    // never counts. Entirely-OOS months also do not count as usable demand history.
+    let m=new Date(start.getFullYear(),start.getMonth()+(start.getDate()===1?0:1),1);
+    let used=0,guard=0;
+    while(guard++<18){
+      const last=new Date(m.getFullYear(),m.getMonth()+1,0);
+      if(last>=t)break;
+      let eligible=0;
+      for(let d=new Date(m);d<=last;d=addDays(d,1)){
+        if(d.getDay()===0||isOosDay(sku,d)||isSaleDay(d)||isCampaignDay(d,sku))continue;
+        eligible++;
+      }
+      if(eligible>0)used++;
+      m=new Date(m.getFullYear(),m.getMonth()+1,1);
+    }
+    return {ready:used>=PIECE_BURN_MONTHS,used,need:PIECE_BURN_MONTHS,
+      label:`${used}/${PIECE_BURN_MONTHS} complete post-launch months`,cls:'piece'};
+  }
+  // Use the mature model's own density classification to decide whether this SKU needs
+  // 6, 7 or 9 weeks, but count ONLY full post-launch weeks toward graduation.
+  const ab=adaptiveBurnRate(sku,dayData);
+  const need=ab.win;
+  let wk=_mondayOf(start);
+  if(wk<start)wk=addDays(wk,7); // launch started mid-week: first full week is next Monday
+  let used=0,guard=0;
+  while(guard++<20){
+    const sat=addDays(wk,5);
+    if(sat>=t)break;
+    let eligible=0;
+    for(let i=0;i<6;i++){
+      const d=addDays(wk,i);
+      if(isOosDay(sku,d)||isSaleDay(d)||isCampaignDay(d,sku))continue;
+      eligible++;
+    }
+    if(eligible>0)used++;
+    wk=addDays(wk,7);
+  }
+  return {ready:used>=need,used,need,
+    label:`${used}/${need} complete post-launch weeks (${ab.cls})`,cls:ab.cls};
+}
+
+// Physical-stock reference for launch sell-through. Prefer the latest stocktake on/before
+// launch. If that doesn't exist, use the first later stocktake and measure only from that
+// anchor onward. This lets an in-launch stocktake become a clean restart point.
+function launchStockReference(sku,start){
+  const sts=stocktakes.filter(st=>st.sku===sku&&st.qty!=null).sort((a,b)=>a.time-b.time);
+  if(!sts.length)return null;
+  const stTs=start.getTime();
+  const before=sts.filter(st=>st.time<=stTs).slice(-1)[0];
+  const chosen=before||sts.find(st=>st.time>stTs);
+  if(!chosen||chosen.qty<=0)return null;
+  const anchor=new Date(chosen.time); anchor.setHours(0,0,0,0);
+  const measureFrom=anchor>start?anchor:start;
+  return {qty:chosen.qty,anchorDate:dKey(anchor),measureFrom};
+}
+
 function launchBurnRate(sku,dayData){
   if(!NEW_LISTING_SKUS.has(sku))return null;
   const t=today();
   const launchDate=LAUNCH_START[sku]||DEFAULT_NEW_LISTING_LAUNCH;
   const start=new Date(launchDate);
   start.setHours(0,0,0,0);
-  if(t<start)return {base:0,cls:'launch-pre',density:0,win:LAUNCH_RAMP_DAYS,used:0,
+  if(t<start)return {base:0,cls:'launch-pre',density:0,win:0,used:0,
     latestWeek:0,recentThird:0,olderRest:0,prelaunch:true,launchStart:dKey(start),launchAgeDays:0,
-    launchEligibleDays:0};
-  const age=Math.max(0,daysBetween(start,t));
-  if(age>LAUNCH_RAMP_DAYS)return null; // graduate to the mature model after six weeks
+    launchEligibleDays:0,matureHistoryLabel:'not started'};
 
+  // Graduate only when the mature model itself has its full required history.
+  const mature=matureHistoryStatus(sku,dayData,start);
+  if(mature.ready)return null;
+
+  const age=Math.max(0,daysBetween(start,t));
   const vals=[];
   for(let d=new Date(start);d<=t;d=addDays(d,1)){
     if(d.getDay()===0||isOosDay(sku,d)||isSaleDay(d)||isCampaignDay(d,sku))continue;
     vals.push(dayData[dKey(d)]||0); // zero-sale launch days intentionally count
   }
-  if(!vals.length)return {base:0,cls:'launch',density:0,win:LAUNCH_RAMP_DAYS,used:0,
+  if(!vals.length)return {base:0,cls:'launch',density:0,win:mature.need,used:0,
     latestWeek:0,recentThird:0,olderRest:0,prelaunch:false,launchStart:dKey(start),
-    launchAgeDays:age,launchEligibleDays:0};
+    launchAgeDays:age,launchEligibleDays:0,matureHistoryLabel:mature.label,
+    launchWeeklySellThroughPct:0,launchRefStock:null,launchRefEligibleDays:0};
 
   const base=_mean(vals);
   const recentN=Math.min(6,Math.max(3,Math.floor(vals.length/2)));
@@ -1281,22 +1355,46 @@ function launchBurnRate(sku,dayData){
   const recent=_mean(recentVals);
   const older=olderVals.length?_mean(olderVals):base;
   const last3=_mean(vals.slice(-Math.min(3,vals.length)));
-  return {base,cls:'launch',density:vals.filter(v=>v>0).length/vals.length,win:LAUNCH_RAMP_DAYS,
+
+  // Launch uplift is based on WEEKLY SELL-THROUGH % of a physical stock reference.
+  const ref=launchStockReference(sku,start);
+  let launchWeeklySellThroughPct=0,launchRefEligibleDays=0,launchRefDailyRate=0,launchRecentRate=0;
+  if(ref){
+    const refVals=[];
+    for(let d=new Date(ref.measureFrom);d<=t;d=addDays(d,1)){
+      if(d.getDay()===0||isOosDay(sku,d)||isSaleDay(d)||isCampaignDay(d,sku))continue;
+      refVals.push(dayData[dKey(d)]||0);
+    }
+    launchRefEligibleDays=refVals.length;
+    launchRefDailyRate=_mean(refVals);
+    launchRecentRate=_mean(refVals.slice(-Math.min(3,refVals.length)));
+    launchWeeklySellThroughPct=ref.qty>0?(launchRefDailyRate*6/ref.qty)*100:0;
+  }
+
+  return {base,cls:'launch',density:vals.filter(v=>v>0).length/vals.length,win:mature.need,
     used:vals.length,latestWeek:last3,recentThird:recent,olderRest:older,
-    prelaunch:false,launchStart:dKey(start),launchAgeDays:age,launchEligibleDays:vals.length};
+    prelaunch:false,launchStart:dKey(start),launchAgeDays:age,launchEligibleDays:vals.length,
+    matureHistoryLabel:mature.label,launchWeeklySellThroughPct,
+    launchRefStock:ref?ref.qty:null,launchRefDate:ref?ref.anchorDate:null,
+    launchRefEligibleDays,launchRefDailyRate,launchRecentRate};
 }
 
 function gatedLaunchTraj(br){
   if(!br||br.prelaunch)return {pct:0,pattern:'new-sku',rawPct:0};
-  if(br.used<LAUNCH_MIN_TRAJ_DAYS||br.olderRest<=0)return {pct:0,pattern:'launch-partial',rawPct:0};
-  const rawPct=(br.recentThird/br.olderRest-1)*100;
-  if(rawPct>5&&br.latestWeek>=br.base){
-    return {pct:Math.min(LAUNCH_TRAJ_CAP,rawPct*LAUNCH_TRAJ_FACTOR),pattern:'launch-rising',rawPct};
+  if(br.launchRefStock==null||br.launchRefEligibleDays<LAUNCH_MIN_UPLIFT_DAYS){
+    return {pct:0,pattern:'launch-partial',rawPct:br.launchWeeklySellThroughPct||0};
   }
-  if(rawPct<-5)return {pct:0,pattern:'launch-falling',rawPct}; // never suppress the launch base
-  return {pct:0,pattern:'launch-flat',rawPct};
+  const st=Math.max(0,br.launchWeeklySellThroughPct||0);
+  const tier=LAUNCH_UPLIFT_TIERS.find(x=>st>=x.minWeeklySellThrough)||LAUNCH_UPLIFT_TIERS[LAUNCH_UPLIFT_TIERS.length-1];
+  let pct=tier.uplift;
+  let slowed=false;
+  // A >25% slowdown in the recent ~3 eligible days drops one tier.
+  if(br.launchRefEligibleDays>=6&&br.launchRefDailyRate>0&&br.launchRecentRate<br.launchRefDailyRate*LAUNCH_SLOWDOWN_RATIO){
+    pct=Math.max(0,pct-10); slowed=true;
+  }
+  const pattern=pct>0?`launch-${tier.label}${slowed?'-slowing':''}`:'launch-slow';
+  return {pct,pattern,rawPct:st};
 }
-
 
 // Long-horizon burn model for UOM==='pcs'. Weekly buckets are too noisy for piece SKUs,
 // so use the latest three COMPLETE calendar months. Recurring N.N sale windows and OOS
@@ -1477,12 +1575,12 @@ function computeStats(){
     const manualDaily=useManual?manualMa/6:0;
     // Pre-launch new listings stay at zero demand until their fixed official launch date.
     // This prevents dozens of not-yet-live SKUs from generating meaningless 1-unit orders.
-    const adjDaily=isPrelaunch?0:Math.max(0.01,autoDaily,trajAdjDaily,manualDaily);
+    const adjDaily=isPrelaunch?0:(isLaunch&&autoDaily<=0&&!useManual?0:Math.max(0.01,autoDaily,trajAdjDaily,manualDaily));
 
     // Which input "won" the MAX — used to label the burn rate inline
     let burnSource;
     if(manualDaily>=trajAdjDaily&&manualDaily>=autoDaily&&useManual)burnSource='manual';
-    else if(trajAdjDaily>autoDaily&&traj>0)burnSource=isPieceSku?'piece-monthly-trajectory':'trajectory';
+    else if(trajAdjDaily>autoDaily&&traj>0)burnSource=isLaunch?'launch-sellthrough':(isPieceSku?'piece-monthly-trajectory':'trajectory');
     else burnSource=isPieceSku?'piece-monthly':'recency-'+br.cls;
 
     // For "threshold target" calculation: use the same burn rate as displayed/used elsewhere.
@@ -1940,7 +2038,7 @@ function computeStats(){
     const sessionsTopup=src==='INHOUSE'&&DEHY[sku]?sessionsToTopupFromZero(skuStub):0;
     const trigWks=src==='INHOUSE'&&DEHY[sku]?ihTriggerWeeks(skuStub):IH_HEALTHY_WKS;
     const ihHealthy=src==='INHOUSE'&&!isPrelaunch&&stockInitialized&&weeksOnHand>=trigWks;
-    skuStats[sku]={sku,src,isSlow,safetyQty,wkTotals,ma,autoMa,manualMa:useManual?manualMa:null,useManual,useLocked,lockedForecast:useLocked?lockedForecast:null,daily,traj,trajPattern,trajRawPct,burnSource,adjDaily,thresh,threshQty,orderTriggerQty,currentStock,effectiveStock,weeksOnHand,daysTillStockout,prodNeeded,soldSince,confIn,oosActive,seaOnly,orderDecision,pendSeaOrders,pendAirOrders,ihHealthy,sessionsTopup,trigWks,buffer:BUFFER[sku]||0,expectedUplift,upliftEventsUsed,despiked,wkBase,monthSeries,burnClass:br.cls,burnWin:br.win,burnDensity:br.density,burnWinUsed:br.used,latestWeekRate:br.latestWeek,recentThirdRate:br.recentThird,olderRestRate:br.olderRest,pieceMonths:br.pieceMonths||[],lockReleasedByReceipt,isNewListing:NEW_LISTING_SKUS.has(sku),isPrelaunch,stockInitialized,launchStart:br.launchStart||null,launchAgeDays:br.launchAgeDays||0,launchEligibleDays:br.launchEligibleDays||0};
+    skuStats[sku]={sku,src,isSlow,safetyQty,wkTotals,ma,autoMa,manualMa:useManual?manualMa:null,useManual,useLocked,lockedForecast:useLocked?lockedForecast:null,daily,traj,trajPattern,trajRawPct,burnSource,adjDaily,thresh,threshQty,orderTriggerQty,currentStock,effectiveStock,weeksOnHand,daysTillStockout,prodNeeded,soldSince,confIn,oosActive,seaOnly,orderDecision,pendSeaOrders,pendAirOrders,ihHealthy,sessionsTopup,trigWks,buffer:BUFFER[sku]||0,expectedUplift,upliftEventsUsed,despiked,wkBase,monthSeries,burnClass:br.cls,burnWin:br.win,burnDensity:br.density,burnWinUsed:br.used,latestWeekRate:br.latestWeek,recentThirdRate:br.recentThird,olderRestRate:br.olderRest,pieceMonths:br.pieceMonths||[],lockReleasedByReceipt,isNewListing:NEW_LISTING_SKUS.has(sku),isPrelaunch,stockInitialized,launchStart:br.launchStart||null,launchAgeDays:br.launchAgeDays||0,launchEligibleDays:br.launchEligibleDays||0,matureHistoryLabel:br.matureHistoryLabel||null,launchWeeklySellThroughPct:br.launchWeeklySellThroughPct||0,launchRefStock:br.launchRefStock??null,launchRefDate:br.launchRefDate||null,launchRefEligibleDays:br.launchRefEligibleDays||0};
   });
   updateCards();buildAlerts();
 }
@@ -3869,10 +3967,12 @@ function buildTrajTag(s){
     return `<span title="new listing · scheduled launch ${s.launchStart||DEFAULT_NEW_LISTING_LAUNCH} · demand forecasting starts from that fixed launch date so zero-sale days count toward sellability" style="font-size:9px;color:var(--text3);opacity:.7;margin-left:4px;cursor:help">prelaunch</span>`;
   }
   if(s.burnClass==='launch'){
-    const rising=s.trajPattern==='launch-rising'&&s.traj>0;
-    const lbl=rising?`launch ↑+${Math.round(s.traj)}%`:'launch';
-    const col=rising?'var(--orange)':'var(--blue)';
-    const tip=`new-listing ramp (${s.launchEligibleDays} eligible operating days since ${s.launchStart||DEFAULT_NEW_LISTING_LAUNCH})\nbase = cumulative launch average INCLUDING zero-sale days, excluding N.N/campaign/OOS days: ${fmtRate(s.autoMa/6,uomT)}${uomT}/d\nrecent launch rate ${fmtRate(s.recentThirdRate,uomT)}${uomT}/d · older ${fmtRate(s.olderRestRate,uomT)}${uomT}/d${rising?`\ntrajectory: raw +${Math.round(s.trajRawPct)}% × ${LAUNCH_TRAJ_FACTOR}, capped +${LAUNCH_TRAJ_CAP}% → +${Math.round(s.traj)}%`:'\ntrajectory: not applied yet / not confirmed'}\nlaunch model graduates after ${LAUNCH_RAMP_DAYS} days`;
+    const boosted=s.traj>0;
+    const lbl=boosted?`launch +${Math.round(s.traj)}%`:'launch';
+    const col=boosted?'var(--orange)':'var(--blue)';
+    const ref=s.launchRefStock!=null?`\nstock reference: ${fmt(s.launchRefStock)}${uomT} (${s.launchRefDate||'launch'}) · ${s.launchRefEligibleDays} eligible days`:'\nstock reference: waiting for a reliable stock anchor';
+    const sell=s.launchRefStock!=null?`\nweekly sell-through pace: ${s.launchWeeklySellThroughPct.toFixed(1)}% of reference stock${boosted?` → +${Math.round(s.traj)}% launch uplift`:''}`:'';
+    const tip=`new-listing model (${s.launchEligibleDays} eligible operating days since ${s.launchStart||DEFAULT_NEW_LISTING_LAUNCH})\nbase = cumulative launch average INCLUDING zero-sale days, excluding N.N/campaign/OOS days: ${fmtRate(s.autoMa/6,uomT)}${uomT}/d${ref}${sell}\nreorder timing = lead-time + safety-stock simulation, active from the first week once sales exist\ngraduation = history-qualified, not a hard date: ${s.matureHistoryLabel||'building mature history'}`;
     return `<span title="${tip}" style="font-size:9px;color:${col};border:1px solid ${col};padding:1px 4px;border-radius:2px;margin-left:4px;cursor:help">${lbl}</span>`;
   }
   if(s.burnClass==='piece-monthly'){
