@@ -2521,33 +2521,48 @@ function buildAlerts(){
   // Pre-anchor sales are NOT compared — under the stocktake model, anything before the
   // stocktake is superseded by the count. Discrepancies are intentionally absorbed
   // by the stocktake baseline.
-  Object.keys(rawSalesByDay).forEach(sku=>{
+  new Set([...Object.keys(rawSalesByDay),...Object.keys(CUT_STOCK_FAMILIES)]).forEach(sku=>{
     const s=skuStats[sku]; if(!s) return;
     // Determine anchor: latest stocktake with qty, else 9 May closing
     const sts=stocktakes.filter(st=>st.sku===sku&&st.qty!=null).sort((a,z)=>z.time-a.time);
     const stOver=sts[0]||null;
     const anchorDate=stOver?new Date(stOver.time):CLOSING_DATE;
     const anchorQty=stOver?stOver.qty:(STOCK[sku]||0);
-    // Sum sales since anchor. Stocktake model: include same-day; CLOSING_DATE: exclude (end-of-day baseline).
-    const days=Object.keys(rawSalesByDay[sku]);
-    let skuTotal=0;
-    days.forEach(d=>{
-      const dt=new Date(d);
-      const include=stOver?dt>=anchorDate:dt>anchorDate;
-      if(include){rawSalesByDay[sku][d].forEach(e=>{skuTotal+=e.buffered;});}
-    });
-    if(skuTotal===0)return;   // no comparable sales activity since anchor
-    const confIn=Math.round(s.confIn);
-    const expected=anchorQty+confIn-Math.round(s.currentStock);
-    const diff=skuTotal-expected;
+
+    let skuTotal=0, expected=0;
     const u=UOM[sku]||'g';
+
+    if(s.cutFamily&&s.cutState){
+      // Cut-stock audit MUST reconcile parent pieces consumed by the WHOLE family,
+      // not just direct 30cm sales. Example: 2x15cm sales consume one 30cm parent.
+      // The physical engine already models this correctly in cutsSinceAnchor; using
+      // rawSalesByDay[parent] here caused false "under-deducted" alerts.
+      skuTotal=Math.round(s.cutState.cutsSinceAnchor||0);
+      const familyReceipts=Math.round(s.cutState.receiptsSinceAnchor||0);
+      expected=anchorQty+familyReceipts-Math.round(s.cutState.whole||0);
+    }else{
+      // Normal SKU: sum sales since anchor. Stocktake model includes same-day;
+      // hardcoded CLOSING_DATE excludes same-day because it is end-of-day.
+      const days=Object.keys(rawSalesByDay[sku]);
+      days.forEach(d=>{
+        const dt=new Date(d);
+        const include=stOver?dt>=anchorDate:dt>anchorDate;
+        if(include){rawSalesByDay[sku][d].forEach(e=>{skuTotal+=e.buffered;});}
+      });
+      const confIn=Math.round(s.confIn);
+      expected=anchorQty+confIn-Math.round(s.currentStock);
+    }
+
+    if(skuTotal===0&&expected===0)return;   // no comparable activity since anchor
+    const diff=skuTotal-expected;
     const tol=Math.max(u==='pcs'?1:10,Math.abs(expected)*0.05);
     if(Math.abs(diff)<tol)return;
     const direction=diff>0?'over-deducted':'under-deducted';
     const hint=diff>0
       ?'sales possibly tagged to wrong SKU, or sold-before-received'
       :'possible missing sales rows or unlogged receipt';
-    alerts.push({type:'danger',msg:`📐 <strong>${nm(sku)}</strong> stock mismatch: ${direction} by ${fmt(Math.abs(diff))}${u} (deducted ${fmt(skuTotal)} vs expected ${fmt(expected)} since last anchor) — ${hint}. Click "show sales breakdown" in the Stock tab to inspect.`});
+    const auditLabel=s.cutFamily?'parent pieces consumed':'deducted';
+    alerts.push({type:'danger',msg:`📐 <strong>${nm(sku)}</strong> stock mismatch: ${direction} by ${fmt(Math.abs(diff))}${u} (${auditLabel} ${fmt(skuTotal)} vs expected ${fmt(expected)} since last anchor) — ${hint}. Click "show sales breakdown" in the Stock tab to inspect.`});
   });
   const icons={danger:'⚠',warning:'◆',info:'ℹ',purple:'★'};
   document.getElementById('alertsArea').innerHTML=alerts.length?alerts.map(a=>`<div class="alert al-${a.type}"><span>${icons[a.type]}</span><span>${a.msg}</span></div>`).join(''):'';
